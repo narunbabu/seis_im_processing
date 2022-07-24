@@ -1,0 +1,26 @@
+[position]
+left.x = 2000
+left.y = 0
+
+right.x = 2181
+right.y = 0
+
+depth.top = -200
+depth.bottom = 3100
+
+[coordinate-reference-system]
+map-projection = "WGS-84 UTM"
+zone-id = 1
+horizontal-units = "m"
+vertical-units = "m"
+
+[segy]
+# encoding = "ASCII"
+# byte-order = ">"
+trace-position.use-source-coord-fields = true
+trace-position.use-group-coord-fields = true
+trace-position.use-cdp-coord-fields = true
+trace-number.use-trace-number-field = true
+trace-number.use-crossline-number-field = true
+
+base-trace-number = 1
