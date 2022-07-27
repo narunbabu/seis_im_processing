@@ -9,7 +9,7 @@ from PyQt5 import QtCore
 #     qApp, QFileDialog, QGraphicsSimpleTextItem,QGraphicsEllipseItem
 
 from coordinatesetting import *
-
+from coord_converter import *
 from PyQt5.QtGui import *
 from PyQt5.QtPrintSupport import *
 from PyQt5.QtWidgets import*
@@ -37,10 +37,12 @@ class PlotDigitizer(QMainWindow):
         # self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         # self.imageLabel.setScaledContents(True)
         self.editcoordinates= False
+        # self.editPoints=False
         # self.notdone_setting=True
         self.iscoordinatesSet=False
         self.lineeditingdone=True
         self.allsaved=True
+        self.linename=''
         
 
         self.viewer = QtImageViewer()
@@ -52,12 +54,31 @@ class PlotDigitizer(QMainWindow):
         self.listWidget.setFixedWidth(150)
         self.coordsettingwdgt.setFixedWidth(150)
 
+        self.lineWidget=DigitizedLine(self)
+        # self.lineWidget.setFixedWidth(250)
+
         wgtslayout=QVBoxLayout()
         wgtswidget=QWidget()
         wgtslayout.addWidget(self.coordsettingwdgt)
-        wgtslayout.addWidget(self.listWidget)        
+        wgtslayout.addWidget(self.lineWidget)       
+        wgtslayout.addWidget(self.listWidget)    
+
+        self.exportbtn = QPushButton("Export")
+
+        self.exportbtn.clicked.connect(self.exportXls)
+        # self.changebtn.setFixedHeight(40)
+        # self.changebtn.setStyleSheet("""QPushButton {    
+        # border-radius: 5px;    
+        # text-align: center;
+        # border: 2px solid #8f8f91;
+        # border-radius: 6px;
+        # background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #f6f7fa, stop: 1 #dadbde);
+        # min-width: 40px;        }        """)
+
+
+        wgtslayout.addWidget(self.exportbtn)    
         wgtswidget.setLayout(wgtslayout)
-        wgtswidget.setFixedWidth(160)
+        wgtswidget.setFixedWidth(210)
 
         hlayout=QHBoxLayout()
         hwidget=QWidget()
@@ -84,13 +105,34 @@ class PlotDigitizer(QMainWindow):
         self.label_position.setStyleSheet('background-color: white; border: 1px solid black')
         self.listWidget.itemClicked.connect(self.listitemClicked)
     def listitemClicked(self,item):
+        line=self.lineWidget.getLine()
+        if len(line)>0:
+            self.lines[self.linename]=line
+        self.lineWidget.clearAll()
+        # print('prevline ',self.linename,self.lines)
+        # if len(self.linename)>0:
+
+            # print('in listitemClicked prevline',self.linename)
+            # for line in self.lines:
+            #     for p in self.lines[line]:
+            #         print('        ',p)
+       
         if item.text() in self.lines:
-            mstr=''
-            for i,point in enumerate(self.lines[item.text()]):
-                mstr+='P{}: ({},{}) \n'.format(i+1,int(point.x()),int(point.x()))
-            QMessageBox.information(self, "ListWidget", "You clicked: "+item.text()+'\n'+mstr)
-        else:
-            QMessageBox.information(self, "ListWidget", "You clicked: "+item.text())
+            self.linename=item.text()
+            self.lineWidget.setLine(self.lines[self.linename])
+            
+
+            # self.lines[self.linename]=[]
+        # print('present ',item.text(),self.lines[self.linename])
+
+            # print('in listitemClicked present line',self.linename)
+            # for p in self.lines[self.linename]:
+            #     print('        ',p)
+            #     mstr+='P{}: ({},{}) \n'.format(i+1,int(point.x()),int(point.x()))
+            # QMessageBox.information(self, "ListWidget", "You clicked: "+item.text()+'\n'+mstr)
+        # else:
+        #     QMessageBox.information(self, "ListWidget", "You clicked: "+item.text())
+    
     def setcoordinatesEditable(self,mbool):
         # self.editcoordinates=mbool
         self. editCoordsAct.setEnabled(mbool)
@@ -125,6 +167,10 @@ class PlotDigitizer(QMainWindow):
                 # print('self.lines ',self.lines)
                 for self.linename in self.lines.keys():
                     self.listWidget.addItem(self.linename)
+                    print(self.linename)
+                    for name,scenePos in self.lines[self.linename]:
+                        print('   ',name,scenePos)
+                        self.display_label(scenePos)
             # file.close()
             # image = QImage(self.fileName)
             # if image.isNull():
@@ -173,8 +219,27 @@ class PlotDigitizer(QMainWindow):
 
             # if not self.fitToWindowAct.isChecked():
             #     self.imageLabel.adjustSize()
+    def exportXls(self):
+        if self.iscoordinatesSet & (len(self.lines)>0):
+            coordinates=self.coordsettingwdgt.getCoordinates()  
+            converter=CoordConverter(coordinates,self.lines)
+            df=converter.getLineCoords()
+            excel_filename,_ = QFileDialog.getSaveFileName(self, 'Save File','','Xls file (*.xlsx )')
+            df[['lno','shotpoint','X-Coord','Y-Coord']].to_excel(excel_filename)
+            displayMessageBox('Successfully Exported to \n'+excel_filename)
+            return 1
+        else:
+            displayMessageBox('No proper data to be converted and exported')
+            return 0
+            
+        
     def save(self):
         text = self.fileName +'\n'
+        # print('self.linename in save ',self.linename)
+        # self.print()
+        # # self.lines[self.linename]=self.lineWidget.getLine()
+        # print('self.linename in save after',self.linename)
+        # self.print()
         if self.iscoordinatesSet:
             coordinates=self.coordsettingwdgt.getCoordinates()               
             coordfile=self.projectname.replace('.pd','') +'/coordinates.npy'
@@ -293,6 +358,7 @@ class PlotDigitizer(QMainWindow):
 
         self.editCoordsAct =QAction("&Enter Coords", self,enabled=False, checkable=True, shortcut="Ctrl+E", triggered=self.editCoords )
         self.createlineAct =QAction("&Edit Line", self,enabled=False, checkable=True, shortcut="Ctrl+L", triggered=self.createLine )
+        self.editPointsAct =QAction("&Enter Points", self,enabled=False, checkable=True, shortcut="Ctrl+T", triggered=self.editPoints )
 
     def createMenus(self):
         self.fileMenu = QMenu("&File", self)
@@ -305,6 +371,7 @@ class PlotDigitizer(QMainWindow):
         self.fileMenu.addAction(self.exitAct)
 
         self.editMenu = QMenu("&Edit", self)
+        self.editMenu.addAction(self.editPointsAct)
         self.editMenu.addAction(self.editCoordsAct)
         self.editMenu.addAction(self.createlineAct)
         self.viewMenu = QMenu("&View", self)
@@ -333,6 +400,7 @@ class PlotDigitizer(QMainWindow):
         self.zoomOutAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.normalSizeAct.setEnabled(not self.fitToWindowAct.isChecked())
         self. editCoordsAct.setEnabled(True)
+        self. editPointsAct.setEnabled(True)
 
     def scaleImage(self, factor):
         self.scaleFactor *= factor
@@ -352,8 +420,9 @@ class PlotDigitizer(QMainWindow):
     def display_label(self, pos):
         pen = QPen(QColor(Qt.yellow))
         delta = QtCore.QPoint(30, -15)
-
+        size=25
         self.label_position = QGraphicsSimpleTextItem("(%d, %d)" % (pos.x(), pos.y()))
+        self.label_position.setFont(QFont("Arial",size))
         self.viewer.scene.addItem(self.label_position)
 
         self.label_position.setPos(int(pos.x()), int(pos.y()))
@@ -370,12 +439,32 @@ class PlotDigitizer(QMainWindow):
             cursor = Qt.CrossCursor
             self.viewer.setCursor(cursor)
             self.allsaved=False
-
+    def editPoints(self):
+        if len(self.linename)>0:
+        # if not self.iscoordinatesSet:
+            # self.editPoints= not self.editPoints
+            self.lineeditingdone=False
+            self.editlines=True
+            cursor = Qt.CrossCursor
+            self.viewer.setCursor(cursor)
+            self.allsaved=False
+        else:
+            displayMessageBox('First create a line')
+    def print(self):
+        print('in print ',self.linename)
+        for line in self.lines:
+            print(line)
+            for p in self.lines[line]:
+                print('        ',p)
     def createLine(self):
+        if len(self.linename)>0:
+            self.lines[self.linename]=self.lineWidget.getLine()
+
         namedlg=getNameDialog()
         self.linename=namedlg.getName()
-        print(self.linename)
+        
         self.lines[self.linename]=[]
+        # print('in createLine after',self.linename)
         self.listWidget.addItem(self.linename)
         # self.editlines= not self.editlines
         self.editlines=True
@@ -383,6 +472,7 @@ class PlotDigitizer(QMainWindow):
         self.viewer.setCursor(cursor)
         self.lineeditingdone=False
         self.allsaved=False
+        self.lineWidget.clearAll()
 
     def handleLeftClick(self, x, y):
         print('self.iscoordinatesSet,self.editcoordinates in handleLeftClick',self.iscoordinatesSet,self.editcoordinates)
@@ -397,7 +487,7 @@ class PlotDigitizer(QMainWindow):
                 scenePos = self.viewer.mapToScene(QtCore.QPoint(row, column))
                 self.iscoordinatesSet=  not self.coordsettingwdgt.setPixelCoords(scenePos)
                 if self.iscoordinatesSet: self. createlineAct.setEnabled(True)
-                print("scenePos handleLeftClick self.iscoordinatesSet",scenePos,self.iscoordinatesSet)
+                # print("scenePos handleLeftClick self.iscoordinatesSet",scenePos,self.iscoordinatesSet)
                 # pos= QtCore.QPoint(int(scenePos.x()), int(scenePos.y()))
                 self.display_label(scenePos)
                 self.editcoordinates= not self.editcoordinates
@@ -408,7 +498,8 @@ class PlotDigitizer(QMainWindow):
                 row = int(x)
                 column = int(y)
                 scenePos = self.viewer.mapToScene(QtCore.QPoint(row, column))
-                self.lines[self.linename].append(scenePos)
+                self.lines[self.linename].append(('',scenePos))
+                self.lineWidget.addRow('',scenePos)
                 self.display_label(scenePos)
                 # self.editcoordinates= not self.editcoordinates
                 

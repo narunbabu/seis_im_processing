@@ -4,7 +4,8 @@
 from PyQt5.QtCore import *
 # from PyQt5.QtGui import QImage, QPixmap, QPalette, QPainter,QPen,QColor
 # from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
-from PyQt5.QtWidgets import QLabel, QMessageBox, QMainWindow, QDialog,QWidget,QHBoxLayout,QVBoxLayout,QDialogButtonBox,QLineEdit,QPushButton,QRadioButton
+from PyQt5.QtWidgets import QLabel, QMessageBox, QMainWindow, QDialog,QWidget,QHBoxLayout,QVBoxLayout, \
+QDialogButtonBox,QLineEdit,QPushButton,QRadioButton,QScrollArea
 # QMenu, QAction, \
     # qApp, 
     # QFileDialog, 
@@ -87,46 +88,18 @@ class CoordInputRow(QWidget):
         inputlayout= QVBoxLayout()  
         radiolayout= QHBoxLayout()    
         self.pixelcoords=QPoint(0,0)    
-        self.coordinatefor=coordfor
-        # self.radioButton_x1 = QRadioButton('X1')
-        # self.radioButton_x2 = QRadioButton('X2')
-        # self.radioButton_y1 = QRadioButton('Y1')
-        # self.radioButton_y2 = QRadioButton('Y2')
-        # for btn in [self.radioButton_x1,self.radioButton_x2,self.radioButton_y1,self.radioButton_y2]:
-        #     btn.toggled.connect(lambda:self.btnstate(btn))
-        #     radiolayout.addWidget(btn)
-
-        # self.setbtn.clicked.connect(self.btnstate)
-        # radiolayout.addWidget(self.setbtn)
-        
-        # self.radioButton_x1.toggled
-        # radiolayout.addWidget(self.radioButton_x2)
+        self.coordinatefor=coordfor if type(coordfor)==str else str(coordfor)
         self.pixelinfo_label=QLabel(self.coordinatefor+': ')
-
         self.coordedit=QLineEdit(self)
-        # self.coordedit.setText('0')
-        # self.setStyleSheet("""QWidget {    
-        # margin:2px;
-        # padding:2px;
-        # }
-        # """)
-
         self.pixelinfo_label.setStyleSheet("""QLabel {    
-        margin:2px;
-        padding:2px;
-        }
-        """)
-
+        margin:2px;        padding:2px;        }        """)
         self.coordedit.setStyleSheet("""QLineEdit {    
         border-radius: 5px;    
         text-align: center;
         border: 2px solid #8f8f91;
         border-radius: 6px;
         background-color: #fdfdfd;
-        min-width: 40px;
-        }
-        """)
-        
+        min-width: 40px;        }        """)        
 
         # radiolayout.addWidget(self.pixelinfo_label)
         radiolayout.addWidget(self.coordedit)
@@ -140,9 +113,7 @@ class CoordInputRow(QWidget):
         border: 2px solid #8f8f91;
         border-radius: 6px;
         background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #f6f7fa, stop: 1 #dadbde);
-        min-width: 40px;
-        }
-        """)
+        min-width: 40px;        }        """)
         radiolayout.addWidget(self.changebtn)
         self.coordedit.setEnabled(False)
         self.changebtn.setEnabled(False)
@@ -231,6 +202,175 @@ class CoordInputRow(QWidget):
             return False
         #    msg= QMessageBox('Please set value for '+self.coordinatefor)
         #    msg.exec_()
+class NmaeInputRow4Pixel(QWidget):
+    def __init__(self,coordfor,pixcoords,name,parent=None):
+        super().__init__(parent)
+        # inputlayout= QVBoxLayout()  
+        inputlayout= QHBoxLayout()    
+        self.parent=parent
+        self.pixelcoords=pixcoords   
+        self.coordinatefor=coordfor if type(coordfor)==str else str(coordfor)
+        self.pixelinfo_label=QLabel(str(self.coordinatefor)+': ')
+        self.coordedit=QLineEdit(self)
+        self.coordedit.setText(name)
+        self.coordedit.textChanged.connect(self.onTextChange)
+        self.pixelinfo_label.setStyleSheet("""QLabel {    
+        margin:0px;        padding:0px;     font-size: 8pt;   }        """)
+        self.coordedit.setStyleSheet("""QLineEdit {    
+        border-radius: 3px;    
+        text-align: center;
+        border: 2px solid #8f8f91;
+        background-color: #fdfdfd;
+        min-width: 40px;        }        """)    
+        self.setPixelCoords()    
+        inputlayout.addWidget(self.pixelinfo_label)
+        inputlayout.addWidget(self.coordedit)
+
+        self.pixelinfo_label.setFixedHeight(20)
+        self.setFixedHeight(58)
+        self.setLayout(inputlayout)
+    def onTextChange(self):
+        self.parent.onTextChange(self.coordinatefor)
+
+    def clearAll(self):
+        # print('in row clearAll')
+        self.pixelcoords=QPoint(0,0) 
+        self.pixelinfo_label.setText(str(self.coordinatefor)+': ')
+        self.setCoord('')
+        # self.setCoordName(row['name'])
+    def getCoordinates(self):
+        # if len(self.coordedit.text()):
+        return (self.coordedit.text(),self.pixelcoords )
+            # return {'name':self.coordinatefor,'pixel_loc':self.pixelcoords ,'value':float(self.coordedit.text())}
+        # else:
+        #     print('Coordinates not set')
+        #     return None
+    def getCoordName(self):
+        if len(self.coordinatefor):
+            return self.coordinatefor
+        else:
+            return None
+    def setPixelCoords(self):        
+        # self.pixelcoords=point
+        # print('point in setPixelCoords',point)
+        if self.pixelcoords.x():
+            self.pixelinfo_label.setText(self.coordinatefor+': '+ '('+str(int(self.pixelcoords.x()))+', '+str(int(self.pixelcoords.y()))+')')
+        else:
+            print('point in setPixelCoords else',self.pixelcoords)
+
+
+    def getPixelCoords(self):
+        if self.pixelcoords.x():
+            return self.pixelcoords
+        else:
+            print('Pixel not set')
+            return 0
+    def isPixelSet(self):
+        # print('in isPixelSet self.pixelcoords.x() ',self.pixelcoords.x())
+        if self.pixelcoords.x():
+            return True
+        else:
+            return False
+    def isValueset(self):
+        try:
+            float(self.coordedit.text())
+            return True
+        except:
+            return False
+
+class EmptyLinewidget(QWidget):
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        self.scroll = QScrollArea()   
+        #Scroll Area Properties
+
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.scroll.setWidgetResizable(True)
+        # self.scroll.setWidget(self.widget)
+        self.mylayout= QVBoxLayout() 
+        self.mylayout.addWidget(self.scroll)
+        self.setLayout(self.mylayout)
+        self.setFixedHeight(350)
+    def mySetWidget(self,widget):
+        self.scroll.setWidget(widget)
+    # def clear():
+    #     for i in reversed(range(self.mylayout.count())): 
+    #         self.coordlayout.itemAt(i).widget().setParent(None)
+
+# class DigitizedLine(QWidget):
+class DigitizedLine(EmptyLinewidget):
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        # self.allcoords=[]
+        # scrollwidget=EmptyLinewidget()
+        mwidget=QWidget()
+        self.coordlayout= QVBoxLayout() 
+        mwidget.setLayout(self.coordlayout)
+        self.line=[]
+        # self.setFixedHeight(350)
+        self.mySetWidget(mwidget)
+    def addRow(self,name,pixcoords):
+        row = NmaeInputRow4Pixel(self.coordlayout.count()+1,pixcoords,name,parent=self)
+        self.line.append((name,pixcoords))
+        self.coordlayout.addWidget(row)
+    def clearAll(self):
+        self.line=[]
+        for i in reversed(range(self.coordlayout.count())): 
+            self.coordlayout.itemAt(i).widget().setParent(None)
+
+    def setLine(self,line):
+        self.clearAll()  
+        self.line=line            
+        done=False
+        for coordfor,(name,pixcoords) in enumerate(self.line):
+            row = NmaeInputRow4Pixel(coordfor,pixcoords,name,parent=self)
+            self.coordlayout.addWidget(row)
+        return True
+
+    def isAllvaluesSet(self):
+        allset=True
+        for i in range(self.coordlayout.count()): 
+            if not self.coordlayout.itemAt(i).widget().isValueset():
+                return False
+        return allset
+    def onTextChange(self,coordinatefor):
+        for i in reversed(range(self.coordlayout.count())): 
+            if self.coordlayout.itemAt(i).widget().coordinatefor==coordinatefor:
+                self.line[i]=self.coordlayout.itemAt(i).widget().getCoordinates()
+                # print(self.line[i])
+    
+    def getLine(self):
+        return self.line
+    def getCoordinates(self):
+        if self.isAllvaluesSet(): 
+            print('self.allcoords in coordsetting.py ',self.allcoords)
+            return self.allcoords
+        else:
+            msg = QMessageBox("Set all the values")
+            msg.exec_()
+            return []    
+    def loadCoords(self,coordpath):
+        # coordinates=np.load(coordpath) 
+        rows=np.load(coordpath,allow_pickle=True)
+        self.allcoords=rows
+        for row,objrow in zip(rows,self.allrows):
+            # print(row['name'],row['pixel_loc'],row['value'])
+            # coordinatefor
+            objrow.setCoordName(row['name'])
+            objrow.setPixelCoords(row['pixel_loc'])
+            objrow.setCoord(str(row['value']))
+            objrow.changebtn.setEnabled(True)
+            objrow.coordedit.setEnabled(True)
+        self.freezcoordinatesetting=True
+        self.unfreezebtn.setEnabled(True)
+        
+    def unfreeze(self):
+        qm = QMessageBox()
+        ret=qm.question(self,'', "Are you sure to reset all the values?", qm.Yes | qm.No)
+        if ret == qm.Yes:
+            self.clearAll()
+            self.parent.setcoordinatesEditable(True)    
 
 class CoordinateSetting(QWidget):
     def __init__(self,parent=None):
@@ -332,7 +472,7 @@ class CoordinateSetting(QWidget):
 
     def getCoordinates(self):
         if self.isAllvaluesSet(): 
-            print('self.allcoords in coordsetting.py ',self.allcoords)
+            # print('self.allcoords in coordsetting.py ',self.allcoords)
             return self.allcoords
         else:
             return []    

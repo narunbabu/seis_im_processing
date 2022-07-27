@@ -1372,8 +1372,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
             pixmap=QPixmap.fromImage(image )
             height = image.height()
             print('image.height() width ',height,image.width())
-            if height>5000:
-                fact=int(100*5000/height)/100
+            if height>6000:
+                fact=int(100*6000/height)/100
                 print('*************fact',fact)
                 prop_height=int(height*fact)
                 prop_width=int(image.width()*fact)
@@ -1534,17 +1534,12 @@ class CanvasMainWindow(QWidget, WindowMixin):
     def load_Shapebyalgorithm(self):        
         self.cv2im=self.getCV2im()
         self.cv2im=cv2.cvtColor(self.cv2im, cv2.COLOR_BGR2GRAY)
-        h,w=self.cv2im.shape
+        w,h=self.cv2im.shape
         hratio=1
 
-        idxes,idyes=getSectionBoundary(self.cv2im) 
+        idxes,idyes=getSectionBoundary(self.cv2im)     
         print('w,h,idxes,idyes ',w,h,idxes,idyes)   
-        if len(idxes)<2:
-            idxes=[100,w-400]
-        if len(idyes)<2:
-            idyes=[100,h-200]
-        print('w,h,idxes,idyes ',w,h,idxes,idyes)   
-        # idxes,idyes=(idxes*hratio).astype(int),(idyes*hratio).astype(int)
+        idxes,idyes=(idxes*hratio).astype(int),(idyes*hratio).astype(int)
         print('idxes,idyes: ',idxes,idyes)
         self.shapes=[( 'bigfield',  [(idxes[0], idyes[0]), (idxes[1], idyes[0]), (idxes[1], idyes[1]), (idxes[0], idyes[1])], 
         (152, 152, 124, 100),         (152, 152, 124, 100),          False)]
@@ -1589,39 +1584,33 @@ class CanvasMainWindow(QWidget, WindowMixin):
         cv2im=self.getCV2im()
         clipped_im=cv2.cvtColor(cv2im, cv2.COLOR_BGR2GRAY)
         clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
-        # thresh=clipped_im.mean()
-        # clipped_im[clipped_im<=thresh]=1
-        # clipped_im[clipped_im>=thresh]=0
+        thresh=clipped_im.mean()
+        clipped_im[clipped_im<=thresh]=1
+        clipped_im[clipped_im>=thresh]=0
 
         # self.crop_image = self.image.copy(rect)
 
-        # ncols=5
-        # h,w=clipped_im.shape
-        # # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
+        ncols=5
+        h,w=clipped_im.shape
         # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
-        # print('resim size ',resim.shape)
-        # width=int(getWidthofHorline(resim))
-        # print('width align_act',width)
+        resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
+        print('resim size ',resim.shape)
+        width=int(getWidthofHorline(resim))
+        print('width align_act',width)
 
-        # # Finding the midpoints of horizontal lines
-        # selim=clipped_im[:,:int(w/55)]
-        # h,w=selim.shape
-        # print('selim.shape ',selim.shape)
+        # Finding the midpoints of horizontal lines
+        selim=clipped_im[:,:int(w/55)]
+        h,w=selim.shape
+        print('selim.shape ',selim.shape)
         
         # mfilter=np.vstack([np.zeros((width,ncols))-0.5,np.ones((width,ncols)),np.zeros((width,ncols))-0.5])
         # midpoints=findMidpointsofHorlines(selim)
         # midpoints=findMidpointsofHorlines(clipped_im)
-        # zerotlineid=midpoints[0]
-        # pad2blookedat=100
-        # self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid,pad2blookedat)
-
         zerotlineid=findHorlineIndex(clipped_im)
         pad2blookedat=100
-        print('zerotlineid: ',zerotlineid)
         self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid,pad2blookedat)
-        self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=True)
-        self.shifts2bapplied[self.shifts2bapplied<0]=0
 
+        self.shifts2bapplied=getCleanedCurve(shifts2bapplied)
         print('self.colnumbers,shifts2bapplied ',self.colnumbers,self.shifts2bapplied)
 
         straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
