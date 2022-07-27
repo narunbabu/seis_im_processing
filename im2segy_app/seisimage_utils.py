@@ -177,13 +177,13 @@ def getCleanedCurve_old(shifts2bapplied):
     shifts2bapplied[pttable]=mav[pttable]+1
     shifts2bapplied[nttable]=mav[nttable]+1
     return shifts2bapplied
-def findHorlineIndex(clipped_im):
+def findHorlineIndex(clipped_im,horizontalsize=30):
     h,w=clipped_im.shape
     selim=clipped_im[:int(h/10),:int(w/55)]
     horizontal = cv2.adaptiveThreshold(selim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
     rows,cols = horizontal.shape
-    horizontalsize = 10
-    horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontalsize,1))
+    # horizontalsize = 30
+    horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontalsize,2))
     # horizontal = cv2.erode(horizontal, horizontalStructure, (-1, -1))
     horizontal = cv2.dilate(horizontal, horizontalStructure, (-1, -1))
     selim=horizontal.astype(float)
@@ -191,20 +191,16 @@ def findHorlineIndex(clipped_im):
     # selim[selim<=127.0]=1
     # selim[selim>127.0]=0
     res=selim.sum(axis=1)
-#     # print(res.mean())
-#     res[res<=res.mean()]=1
-#     res[res>res.mean()]=0
-
-#     # h,w=selim.shape
-#     # res[res<=w*0.8]=0
-#     # res[res>w*0.8]=1.0
-#     diff=np.diff(res)
-#     posids=np.where(diff==1.0)[0]
-#     negids=np.where(diff==-1.0)[0]
-#     # print('posids,negids in findMidpointsofHorlines',posids,negids)
-#     arrlen=len(negids) if len(posids)>len(negids) else len(posids)
-#     midpoints=((posids[:arrlen]+negids[:arrlen])/2).astype(int)  
-    return np.argmin(res)
+    mindx=np.argmin(res)
+    checkval=np.mean(res)-2*np.std(res)
+    idxs=np.where(res<checkval)[0]
+    if len(idxs)>0:
+        if mindx==idxs[0]:
+            return mindx
+        else:
+            return idxs[0]
+    else:
+        return mindx
 def findMidpointsofHorlines(clipped_im):
     h,w=clipped_im.shape
     selim=clipped_im[:int(h/5),:int(w/55)]
@@ -281,7 +277,7 @@ def getCleanedCurve(shifts2bapplied,returnsmooth=False):
     if returnsmooth:
         return mav.astype(int)
     return shifts2bapplied
-def getColumnShifts(clipped_im,zerotlineid,pad2blookedat):
+def getColumnShifts(clipped_im,zerotlineid):
     mp=zerotlineid
     pad=int(clipped_im.shape[0]/30)
     fpad,bpad=pad,pad

@@ -1371,12 +1371,13 @@ class CanvasMainWindow(QWidget, WindowMixin):
             self.filelable.setText(self.file_path)
             pixmap=QPixmap.fromImage(image )
             height = image.height()
+            width=image.width()
             print('image.height() width ',height,image.width())
-            if height>6000:
-                fact=int(100*6000/height)/100
+            if width>25000:
+                fact=int(100*25000/width)/100
                 print('*************fact',fact)
                 prop_height=int(height*fact)
-                prop_width=int(image.width()*fact)
+                prop_width=int(width*fact)
                 # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
                 pixmap = pixmap.scaledToHeight(prop_height)
                 # pixmap = pixmap.scaledToWidth(prop_width)
@@ -1415,6 +1416,133 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
 
 
+        # print('qImg done from array')
+        # self.canvas.load_pixmap(QPixmap(qImg))
+        # try:
+        #     self.show_bounding_box_from_annotation_file('./boxes_mod.txt')
+        # except:
+        #     self.show_bounding_box_from_annotation_file('./boxes.txt')
+        # self.set_dirty()
+        # self.update_combo_box()
+
+        # self.set_clean()
+        # self.canvas.setEnabled(True)
+        # self.adjust_scale(initial=True)
+        # self.paint_canvas()
+        # # self.add_recent_file(self.file_path)
+        # self.toggle_actions(True)
+        # print('In load_file shapes')
+        # shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
+        # print(shapes)
+
+        # counter = self.counter_str()
+        # self.setWindowTitle(__appname__ + ' ' + file_path + ' ' + counter)
+
+        # # Default : select last item if there is at least one item
+        # if self.label_list.count():
+        #     self.label_list.setCurrentItem(self.label_list.item(self.label_list.count() - 1))
+        #     self.label_list.item(self.label_list.count() - 1).setSelected(True)
+
+        # self.canvas.setFocus(True)
+        return True
+    def readbyCV2(self,filename=''):
+        image = cv2.imread(filename)
+        oh,ow,_=image.shape
+        if oh>4500:
+            fact=int(100*4500/oh)/100
+            image = cv2.resize(image, (0, 0), fx = fact, fy = fact)
+        oh,ow,_=image.shape
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return gray
+    def load_fileAsCVim(self, file_path=None):
+
+        """Load the specified file, or the last opened file if None."""
+        self.reset_state()
+        self.canvas.setEnabled(False)
+        if file_path is None:
+            file_path = self.settings.get(SETTING_FILENAME)
+
+        # Make sure that filePath is a regular python string, rather than QString
+        file_path = ustr(file_path)
+
+        # Fix bug: An  index error after select a directory when open a new file.
+        unicode_file_path = ustr(file_path)
+        unicode_file_path = os.path.abspath(unicode_file_path)
+        # Tzutalin 20160906 : Add file list and dock to move faster
+        # Highlight the file item
+        if unicode_file_path and self.file_list_widget.count() > 0:
+            if unicode_file_path in self.m_img_list:
+                index = self.m_img_list.index(unicode_file_path)
+                file_widget_item = self.file_list_widget.item(index)
+                file_widget_item.setSelected(True)
+            else:
+                self.file_list_widget.clear()
+                self.m_img_list.clear()
+
+        if unicode_file_path and os.path.exists(unicode_file_path):
+            if LabelFile.is_label_file(unicode_file_path):
+                try:
+                    self.label_file = LabelFile(unicode_file_path)
+                except LabelFileError as e:
+                    self.error_message(u'Error opening file',
+                                       (u"<p><b>%s</b></p>"
+                                        u"<p>Make sure <i>%s</i> is a valid label file.")
+                                       % (e, unicode_file_path))
+                    self.status("Error reading %s" % unicode_file_path)
+                    return False
+
+                self.image_data = self.label_file.image_data
+                self.line_color = QColor(*self.label_file.lineColor)
+                self.fill_color = QColor(*self.label_file.fillColor)
+                self.canvas.verified = self.label_file.verified
+            else:
+                # Load image:
+                # read data first and store for saving into label file.
+                self.image_data = self.readbyCV2(unicode_file_path)
+                self.label_file = None
+                self.canvas.verified = False
+
+            if isinstance(self.image_data, QImage):
+                image = self.image_data
+            else:
+                image = QImage.fromData(self.image_data)
+            if image.isNull():
+                self.error_message(u'Error opening file',
+                                   u"<p>Make sure <i>%s</i> is a valid image file." % unicode_file_path)
+                self.status("Error reading %s" % unicode_file_path)
+                return False
+            
+            self.status("Loaded %s" % os.path.basename(unicode_file_path))
+            self.parent.__appname__=unicode_file_path
+            # self.image = image
+            self.file_path = unicode_file_path
+            self.filelable.setText(self.file_path)
+            pixmap=QPixmap.fromImage(image )
+            # height = image.height()
+            # width=image.width()
+            # print('image.height() width ',height,image.width())
+            # if width>25000:
+            #     fact=int(100*25000/width)/100
+            #     print('*************fact',fact)
+            #     prop_height=int(height*fact)
+            #     prop_width=int(width*fact)
+            #     # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
+            #     pixmap = pixmap.scaledToHeight(prop_height)
+            #     # pixmap = pixmap.scaledToWidth(prop_width)
+
+            self.canvas.load_pixmap(pixmap)
+            # print(oh,ow)
+            self.image = self.canvas.pixmap.toImage()
+            print('self.image  size',self.image.size())
+            # if self.label_file:
+            #     self.load_labels(self.label_file.shapes)
+
+            # self.show_bounding_box_from_annotation_file(file_path)
+            # self.show_bounding_box_from_annotation_file('./boxes.txt')
+            self.load_Shapebyalgorithm()
+            return True
+        return False
+
         print('qImg done from array')
         self.canvas.load_pixmap(QPixmap(qImg))
         try:
@@ -1444,6 +1572,11 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
         # self.canvas.setFocus(True)
         return True
+
+        
+
+
+
 
     def rotate(self):
         print('In rotate')
@@ -1539,6 +1672,13 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
         idxes,idyes=getSectionBoundary(self.cv2im)     
         print('w,h,idxes,idyes ',w,h,idxes,idyes)   
+        if len(idxes)<1:
+            idxes=[100,100]
+        elif len(idxes)<2:
+            idxes=[idxes[0],idxes[0]]
+        if len(idyes)<2:
+            idyes=[w-100,h-100]
+        idxes,idyes=np.array( idxes),np.array(idyes)
         idxes,idyes=(idxes*hratio).astype(int),(idyes*hratio).astype(int)
         print('idxes,idyes: ',idxes,idyes)
         self.shapes=[( 'bigfield',  [(idxes[0], idyes[0]), (idxes[1], idyes[0]), (idxes[1], idyes[1]), (idxes[0], idyes[1])], 
@@ -1559,7 +1699,7 @@ class CanvasMainWindow(QWidget, WindowMixin):
         # load_Shapebyalgorithm
         self.canvas.verified = False
 
-    def align_act(self):        
+    def align_act(self,return_smooth):        
         # yolo_boxes=np.array(self.getYoloBoxes())
         # print('yolo_boxes ',yolo_boxes)
 
@@ -1573,7 +1713,7 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
         points=shapes[0]['points']
         
-        print('points ',points)
+        # print('points ',points)
         idxes=[0,0]
         idyes=[0,0]
         idxes[0], idyes[0]=points[0]
@@ -1583,35 +1723,44 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
         cv2im=self.getCV2im()
         clipped_im=cv2.cvtColor(cv2im, cv2.COLOR_BGR2GRAY)
-        clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
-        thresh=clipped_im.mean()
-        clipped_im[clipped_im<=thresh]=1
-        clipped_im[clipped_im>=thresh]=0
-
-        # self.crop_image = self.image.copy(rect)
-
-        ncols=5
-        h,w=clipped_im.shape
-        # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
-        resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
-        print('resim size ',resim.shape)
-        width=int(getWidthofHorline(resim))
-        print('width align_act',width)
-
-        # Finding the midpoints of horizontal lines
-        selim=clipped_im[:,:int(w/55)]
-        h,w=selim.shape
-        print('selim.shape ',selim.shape)
         
-        # mfilter=np.vstack([np.zeros((width,ncols))-0.5,np.ones((width,ncols)),np.zeros((width,ncols))-0.5])
-        # midpoints=findMidpointsofHorlines(selim)
-        # midpoints=findMidpointsofHorlines(clipped_im)
-        zerotlineid=findHorlineIndex(clipped_im)
-        pad2blookedat=100
-        self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid,pad2blookedat)
+        clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
 
-        self.shifts2bapplied=getCleanedCurve(shifts2bapplied)
-        print('self.colnumbers,shifts2bapplied ',self.colnumbers,self.shifts2bapplied)
+        zerotlineid=findHorlineIndex(clipped_im,horizontalsize=30)
+        self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
+        self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=return_smooth)
+
+        # thresh=clipped_im.mean()
+        # cv2.imwrite('clipped_im2.png', clipped_im)
+        # # clipped_im[clipped_im<=thresh]=1
+        # # clipped_im[clipped_im>=thresh]=0
+
+        # # self.crop_image = self.image.copy(rect)
+
+        # ncols=5
+        # h,w=clipped_im.shape
+        # # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
+        # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
+        # print('resim size ',resim.shape)
+        # width=int(getWidthofHorline(resim))
+        # print('width align_act',width)
+
+        # # Finding the midpoints of horizontal lines
+        # selim=clipped_im[:,:int(w/55)]
+        # h,w=selim.shape
+        # print('selim.shape ',selim.shape)
+        
+        # # mfilter=np.vstack([np.zeros((width,ncols))-0.5,np.ones((width,ncols)),np.zeros((width,ncols))-0.5])
+        # # midpoints=findMidpointsofHorlines(selim)
+        # # midpoints=findMidpointsofHorlines(clipped_im)
+
+
+        # zerotlineid=findHorlineIndex(clipped_im)
+        # # pad2blookedat=100
+        # self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
+
+        # self.shifts2bapplied=getCleanedCurve(shifts2bapplied)
+        # print('self.colnumbers,shifts2bapplied ',self.colnumbers,self.shifts2bapplied)
 
         straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
         self.load_cv2im( straightImage,isgrey=False)

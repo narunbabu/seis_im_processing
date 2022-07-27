@@ -189,6 +189,13 @@ class MainWindow(QMainWindow):
         crop_fields_button.setText("Crop Fields")
         crop_fields_button.clicked.connect(self.crop_fields_act)
 
+        self.checkbox = QCheckBox('Return smooth', self)
+        # self.checkbox.setGeometry(200, 150, 100, 30)
+
+  
+        
+  
+
         align_button = QPushButton(self)
         align_button.setText("Align")
         align_button.clicked.connect(self.align_act)
@@ -196,6 +203,7 @@ class MainWindow(QMainWindow):
         unalign_button = QPushButton(self)
         unalign_button.setText("Undo Align")
         unalign_button.clicked.connect(self.undo_align_act)
+        ML_button_layout.addWidget(self.checkbox)
         ML_button_layout.addWidget(align_button)
         ML_button_layout.addWidget(unalign_button)
         
@@ -239,7 +247,13 @@ class MainWindow(QMainWindow):
         filename=self.bigim_canvas.file_path[:-4] +'_crop.png'
 
         self.crop_image.save(filename, "PNG")
-        print('Done Saving....')
+        
+
+        msg=QMessageBox()
+        msg.setText('Done Saving.... \n'+filename)
+        msg.exec_()
+
+
 
     def reset_state(self):
         None
@@ -270,8 +284,9 @@ class MainWindow(QMainWindow):
         pixmap = pixmap.scaled(self.bigim_canvas.frameGeometry().size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.mylabel.setPixmap(pixmap)
     def align_act(self):        
-
-        self.bigim_canvas.align_act()
+        # checking if it checked
+        check = self.checkbox.isChecked()
+        self.bigim_canvas.align_act(check)
     def undo_align_act(self):
         self.bigim_canvas.undo_align_act()
         
