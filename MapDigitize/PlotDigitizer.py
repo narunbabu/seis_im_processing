@@ -183,7 +183,7 @@ class PlotDigitizer(QMainWindow):
         if filename:
             self.fileName=filename
         else:
-            self.fileName, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
+            self.fileName, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', 'D:\Ameyem\Bhugarbho\JOGMEC\ShotpointMap//',
                                                   'Images (*.png *.jpeg *.jpg *.bmp *.gif *.tif)', options=options)
         if self.fileName:
             image = QImage(self.fileName)
@@ -261,7 +261,7 @@ class PlotDigitizer(QMainWindow):
 
     def file_save_as(self):
         import os
-        self.projectname = QFileDialog.getSaveFileName(self, 'Save File','','PlotDigi file (*.pd )')
+        self.projectname = QFileDialog.getSaveFileName(self, 'Save File','D:\Ameyem\Bhugarbho\JOGMEC\ShotpointMap//','PlotDigi file (*.pd )')
         self.projectname=self.projectname[0]
         try:
             os.makedirs(self.projectname.replace('.pd','')  )

@@ -140,7 +140,31 @@ def convert(image_filepath: Path, segy_filepath: Path=None, config_filepath: Pat
     logger.info("config_filepath = %s", config_filepath)
 #     print(segy_filepath)
     return image_filepath,segy_filepath,config_filepath
-def gethorizontalLineFilter(hf_data):
+# def gethorizontalLineFilter(hf_data):
+#     hf_data[hf_data>0]=0
+#     hf_data[hf_data>-0.05]=0
+#     hf_data[hf_data<=-0.05]=1
+    
+#     ids=np.where(hf_data==1)
+#     difids=np.diff(ids)
+#     difids[difids>1]
+#     spike_interval=int(np.median(difids[difids>1]))
+#     # ,np.mean(difids[difids>1])
+#     _,spikewidths=np.where(difids>1)
+#     spikewidth=int(np.median(np.diff(spikewidths)))
+# #     spike_interval,spikewidth
+#     halfspikew=int(spikewidth/2)
+#     x = np.arange(-halfspikew+1, 1,1)
+#     mfilter=x**2/40+0.01
+#     if len(mfilter)*2==spikewidth:
+#         mfilter=np.array([*mfilter,*mfilter[::-1]])
+#     else:
+#         mfilter=np.array([*mfilter,mfilter[-1],*mfilter[::-1]])
+#     smallfilter=np.append([1]*spike_interval,mfilter)
+#     times=int(len(sgray)/len(smallfilter))
+#     fullfilter=np.array([*smallfilter]*(times+1))[:len(sgray)]
+#     return fullfilter
+def gethorizontalLineFilter(hf_data,sgray):
     hf_data[hf_data>0]=0
     hf_data[hf_data>-0.05]=0
     hf_data[hf_data<=-0.05]=1
@@ -246,11 +270,6 @@ def getLowPassfilteredTraces(proctrcs,cutoff = 35.0 ):
         y = butter_lowpass_filter(trc, cutoff, fs, order)
         filttrcs.append(np.append(y[fromsample:],np.zeros(fromsample)))
     return np.array(filttrcs)
-
-
-
-
-
 
 def default_text_header(inputdict):
     iline, xline, offset,mypath=inputdict['iline'],inputdict['xline'], inputdict['offset'],inputdict['dstpath']
@@ -406,7 +425,7 @@ def getOperator(mtrc,old=True):
     counts=getCounts(mtrc)
     countmeans={}
     for k in counts  :
-        print(k,': ',np.mean(counts[k]))
+        # print(k,': ',np.mean(counts[k]))
         if len(counts[k])>0:
             countmeans[k]=np.mean(counts[k])
         
@@ -414,7 +433,7 @@ def getOperator(mtrc,old=True):
     f=10
     signal_len=2*hlfop_len/1000
     print('signal_len ',signal_len)
-    print(2*hlfop_len)
+    # print(2*hlfop_len)
     dt=0.002
 
     # mlen=peak_loc*2
@@ -493,13 +512,46 @@ def precisionFiltering(clipped_im):
             plt.figure(figsize=(12,4))
             plt.imshow(resim[:,:200])
     return clipped_im
+# def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
+#     thresh=mthresh.copy()
+#     trange=np.arange(stime,etime+1,2).astype(int)
+#     pixper_trc=thresh.shape[1]/ntrc
+#     print('ntrc,thresh.shape,pixper_trc ',ntrc,thresh.shape,pixper_trc)
+
+#     pixrange=np.arange(0,thresh.shape[1]+1,pixper_trc).astype(int)
+#     # # 
+#     # thresh[thresh<100]=0
+#     # thresh[thresh>100]=1
+    
+#     tmean=thresh.mean()
+#     if tmean>100:
+#         tmean=100
+    
+#     thresh[thresh<tmean]=0
+#     thresh[thresh>tmean]=1
+#     # plt.hist(thresh)
+
+#     traces=[]
+#     for i in range(len(pixrange)-1):
+#     #     print(pixrange[i],pixrange[i+1])
+#         trc=pixper_trc*thresh[:,pixrange[i]:pixrange[i+1]].sum(axis=1)/(pixrange[i+1]-pixrange[i])
+#         nlesThalf=np.sum(trc<=pixper_trc/2)
+#         ngreThalf=np.sum(trc>pixper_trc/2)
+#         if ngreThalf/nlesThalf<0.01:
+#             trc[trc<=pixper_trc/2]=trc[trc<=pixper_trc/2]*0.3
+# #     print(nlesThalf,ngreThalf,ngreThalf/nlesThalf)
+    
+#         traces.append(trc)
+#     traces=np.array(traces).astype(float)
+#     return traces
 def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
     thresh=mthresh.copy()
     trange=np.arange(stime,etime+1,2).astype(int)
     pixper_trc=thresh.shape[1]/ntrc
+    halfpixper_trc=int(pixper_trc/2)
     print('ntrc,thresh.shape,pixper_trc ',ntrc,thresh.shape,pixper_trc)
 
-    pixrange=np.arange(0,thresh.shape[1]+1,pixper_trc).astype(int)
+    pixrange=np.arange(halfpixper_trc,thresh.shape[1]-halfpixper_trc,pixper_trc).astype(int)
     # # 
     # thresh[thresh<100]=0
     # thresh[thresh>100]=1
@@ -515,7 +567,7 @@ def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
     traces=[]
     for i in range(len(pixrange)-1):
     #     print(pixrange[i],pixrange[i+1])
-        trc=pixper_trc*thresh[:,pixrange[i]:pixrange[i+1]].sum(axis=1)/(pixrange[i+1]-pixrange[i])
+        trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc:pixrange[i+1]+halfpixper_trc].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc)
         nlesThalf=np.sum(trc<=pixper_trc/2)
         ngreThalf=np.sum(trc>pixper_trc/2)
         if ngreThalf/nlesThalf<0.01:

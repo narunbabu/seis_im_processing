@@ -42,6 +42,7 @@ from utils.general import increment_path
 # from ImageFields import CanvasMainWindow as FieldCanvasMainWindow
 from ImageBig import CanvasMainWindow as BigCanvasMainWindow
 import numpy as np
+from image2segy_utils import *
 __appname__ = 'DocDigi'
 
 class PredictedList(QWidget):
@@ -178,23 +179,40 @@ class MainWindow(QMainWindow):
         # predict_fields_button = QPushButton(self)
         # predict_fields_button.setText("Pedict Fields")
         # predict_fields_button.clicked.connect(self.predict_fields_act)
+        trace_label=QLabel("Trace Count")
+        self.trace_count_edit=QLineEdit()
+
+        totaltime_label=QLabel("TotalTime(sec)")
+        self.total_time_edit=QLineEdit('6.0')
+
+        trac_hbox=QHBoxLayout()
+        trac_hbox.addWidget(trace_label)
+        trac_hbox.addWidget(self.trace_count_edit)
+        trace_wdgt=QWidget()
+        trace_wdgt.setLayout(trac_hbox)
+        trace_wdgt.setMaximumHeight(50)
+
+        time_hbox=QHBoxLayout()
+        time_hbox.addWidget(totaltime_label)
+        time_hbox.addWidget(self.total_time_edit)
+        time_wdgt=QWidget()
+        time_wdgt.setLayout(time_hbox)
+        time_wdgt.setMaximumHeight(50)
+
+        segy_export_button = QPushButton(self)
+        segy_export_button.setText("Export Segy")
+        segy_export_button.clicked.connect(self.segy_export_act)     
 
         save_fields_button = QPushButton(self)
         save_fields_button.setText("Save Crop image")
-        save_fields_button.clicked.connect(self.save_fields_act)
-
-
+        save_fields_button.clicked.connect(self.save_fields_act)      
 
         crop_fields_button = QPushButton(self)
         crop_fields_button.setText("Crop Fields")
         crop_fields_button.clicked.connect(self.crop_fields_act)
 
         self.checkbox = QCheckBox('Return smooth', self)
-        # self.checkbox.setGeometry(200, 150, 100, 30)
-
-  
-        
-  
+        # self.checkbox.setGeometry(200, 150, 100, 30)  
 
         align_button = QPushButton(self)
         align_button.setText("Align")
@@ -203,12 +221,18 @@ class MainWindow(QMainWindow):
         unalign_button = QPushButton(self)
         unalign_button.setText("Undo Align")
         unalign_button.clicked.connect(self.undo_align_act)
+
         ML_button_layout.addWidget(self.checkbox)
         ML_button_layout.addWidget(align_button)
         ML_button_layout.addWidget(unalign_button)
         
         ML_button_layout.addWidget(crop_fields_button)
         ML_button_layout.addWidget(save_fields_button)
+        ML_button_layout.addWidget(trace_wdgt)
+        ML_button_layout.addWidget(time_wdgt)
+        ML_button_layout.addWidget(segy_export_button)
+
+
         ML_button_group = QGroupBox("Predict")
         ML_button_group.setLayout(ML_button_layout)
 
@@ -246,15 +270,105 @@ class MainWindow(QMainWindow):
         print('Saving Cropimage')
         filename=self.bigim_canvas.file_path[:-4] +'_crop.png'
 
+
         self.crop_image.save(filename, "PNG")
         
 
         msg=QMessageBox()
         msg.setText('Done Saving.... \n'+filename)
         msg.exec_()
+    def PixIm_to_CV2Im(self,qimg):
+        # print('-----QPixmap_to_Opencv-----')
+        # print('qtpixmap type:',type(qtpixmap))
+        # qimg = qtpixmap.toImage()  # QPixmap-->QImage
+        # print('qimg type:', type(qimg))
+
+        temp_shape = (qimg.height(), qimg.bytesPerLine() * 8 // qimg.depth())
+        temp_shape += (4,)
+        ptr = qimg.bits()
+        ptr.setsize(qimg.byteCount())
+        result = np.array(ptr, dtype=np.uint8).reshape(temp_shape)
+        result = result[..., :3]
+        # cv2.imwrite('./result.jpg',result) # If saved, RGB format will be displayed
+        return result
+    def segy_export_act(self):
+        filename=self.bigim_canvas.file_path[:-4] +'_raw.sgy'
+        ntrace=int(self.trace_count_edit.text())
+        ntrc=ntrace
+        strc=1
+        etrc=strc+ntrc
+        stime,etime=0,float(self.total_time_edit.text())*1000
+
+        gray = cv2.cvtColor(self.PixIm_to_CV2Im(self.crop_image), cv2.COLOR_BGR2GRAY)
+
+        sgray=gray.sum(axis=1)
 
 
+        cutoff = 30.0
+        bestcases={'':6}
+        for key in bestcases:
+            case=bestcases[key]
+            print('Case: ',case)
+            crude_hor_filter,useStepOp,useHorfilter=getDirections(case)
+            #Horizontal filter calculation to remove horizontal lines
+            twt=list(range(len(sgray)))
+            lf_data,wf_data,hf_data,xmaxnormmeans=windowFilt(twt,sgray,nclip=0,window=(1,10),order=4)
+            useHorfilter=True
+            crude_hor_filter=False
+            if useHorfilter:
+                if not crude_hor_filter:
+                    hlfilter=gethorizontalLineFilter(hf_data,gray) #median gap found and kept lo values to nullify horizontal line
+                    hlfilter[hlfilter<=0.5]=0.5
+                    print('hlfilter')
+                else:
+                    hlfilter=getHorizontalRawFilter(hf_data) #filter generate with crude way, line gaps are filled with 0.1 values
 
+            mthresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            #     traces=img2rawtrace(clipped_im,stime,etime,ntrc)
+            traces=img2rawtrace(mthresh,stime,etime,ntrc)
+            traces=successiveDeduction(traces,ntraces=200)
+            #Operator for smooth trace
+            trcno=200
+            mtrc=traces[trcno]
+
+
+            if useHorfilter:
+                mtrc=mtrc*hlfilter
+
+            if not useStepOp:
+                op=getOperator(mtrc,old=False)
+            else:
+                op=getOperatorStep(mtrc)
+
+
+            # Filter or not and make resultant traces as float64 type
+            tracet=traces.shape[1]
+            actualt=etime
+            tracetpermsec=tracet/etime
+            for50msec=tracetpermsec*30
+            traces[:,:int(for50msec)]=traces[:,:int(for50msec)]*0.1
+
+            if useHorfilter:
+                result=(np.array(traces)*hlfilter*1000).astype(np.float64)
+            else:
+                result=(np.array(traces)*1000).astype(np.float64)
+
+            print(traces.shape,result.shape)
+            trange=np.arange(stime,etime+1,2).astype(int)
+            proctrcs= getOpProcTraces(result,op,trange)
+        #     filttrcs=np.array(proctrcs)
+            filttrcs= getLowPassfilteredTraces(proctrcs,cutoff = cutoff )
+
+            inputdict=dict(dstpath=filename,srcpath='../bak_test2.sgy',mintime=1300,mxtime=1500,dt=1,iline=1, xline=169, offset=0)
+
+            status=saveAsSegy(filttrcs.T,inputdict=inputdict,delrt=2,strc=strc,setimes=[stime,etime])
+            if status:    
+                print('Done export..',inputdict['dstpath'])
+            else:
+                print('Export incomplete..')
+            msg=QMessageBox()
+            msg.setText('Done Export.... \n'+filename)
+            msg.exec_()
     def reset_state(self):
         None
         # # self.mylabel.clear()
