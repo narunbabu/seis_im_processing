@@ -205,7 +205,8 @@ class MainWindow(QMainWindow):
 
         save_fields_button = QPushButton(self)
         save_fields_button.setText("Save Crop image")
-        save_fields_button.clicked.connect(self.save_fields_act)      
+        save_fields_button.clicked.connect(self.save_fields_act)     
+        save_fields_button.setEnabled(False)
 
         crop_fields_button = QPushButton(self)
         crop_fields_button.setText("Crop Fields")
@@ -296,10 +297,15 @@ class MainWindow(QMainWindow):
         ntrace=int(self.trace_count_edit.text())
         ntrc=ntrace
         strc=1
-        etrc=strc+ntrc
+        # etrc=strc+ntrc+
         stime,etime=0,float(self.total_time_edit.text())*1000
-
-        gray = cv2.cvtColor(self.PixIm_to_CV2Im(self.crop_image), cv2.COLOR_BGR2GRAY)
+        try:
+            gray = cv2.cvtColor(self.PixIm_to_CV2Im(self.crop_image), cv2.COLOR_BGR2GRAY)
+        except:
+            gray=np.zeros((2,2))
+            msg=QMessageBox()
+            msg.setText('Crop image first \n')
+            msg.exec_()
 
         sgray=gray.sum(axis=1)
 
@@ -326,9 +332,10 @@ class MainWindow(QMainWindow):
             mthresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
             #     traces=img2rawtrace(clipped_im,stime,etime,ntrc)
             traces=img2rawtrace(mthresh,stime,etime,ntrc)
-            traces=successiveDeduction(traces,ntraces=200)
+            # traces=successiveDeduction(traces,ntraces=200)
             #Operator for smooth trace
             trcno=200
+            if trcno> len(traces): trcno=int(len(traces)/2)
             mtrc=traces[trcno]
 
 

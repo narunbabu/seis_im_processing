@@ -547,7 +547,7 @@ def precisionFiltering(clipped_im):
 def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
     thresh=mthresh.copy()
     trange=np.arange(stime,etime+1,2).astype(int)
-    pixper_trc=thresh.shape[1]/ntrc
+    pixper_trc=thresh.shape[1]/(ntrc+1)
     halfpixper_trc=int(pixper_trc/2)
     print('ntrc,thresh.shape,pixper_trc ',ntrc,thresh.shape,pixper_trc)
 
