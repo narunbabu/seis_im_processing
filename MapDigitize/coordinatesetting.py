@@ -2,10 +2,10 @@
 # from PyQt5.QtPrintSupport import *
 # from PyQt5.QtWidgets import*
 from PyQt5.QtCore import *
-# from PyQt5.QtGui import QImage, QPixmap, QPalette, QPainter,QPen,QColor
+from PyQt5.QtGui import  QPainter,QPen,QColor,QPainterPath
 # from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import QLabel, QMessageBox, QMainWindow, QDialog,QWidget,QHBoxLayout,QVBoxLayout, \
-QDialogButtonBox,QLineEdit,QPushButton,QRadioButton,QScrollArea
+QDialogButtonBox,QLineEdit,QPushButton,QRadioButton,QScrollArea,QGraphicsPathItem
 # QMenu, QAction, \
     # qApp, 
     # QFileDialog, 
@@ -99,7 +99,7 @@ class CoordInputRow(QWidget):
         border: 2px solid #8f8f91;
         border-radius: 6px;
         background-color: #fdfdfd;
-        min-width: 40px;        }        """)        
+        min-width: 40px; max-width: 80px;       }        """)        
 
         # radiolayout.addWidget(self.pixelinfo_label)
         radiolayout.addWidget(self.coordedit)
@@ -113,7 +113,7 @@ class CoordInputRow(QWidget):
         border: 2px solid #8f8f91;
         border-radius: 6px;
         background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #f6f7fa, stop: 1 #dadbde);
-        min-width: 40px;        }        """)
+        min-width: 40px;      max-width: 45px;  }        """)
         radiolayout.addWidget(self.changebtn)
         self.coordedit.setEnabled(False)
         self.changebtn.setEnabled(False)
@@ -189,7 +189,7 @@ class CoordInputRow(QWidget):
             print('Pixel not set')
             return 0
     def isPixelSet(self):
-        print('in isPixelSet self.pixelcoords.x() ',self.pixelcoords.x())
+        # print('in isPixelSet self.pixelcoords.x() ',self.pixelcoords.x())
         if self.pixelcoords.x():
             return True
         else:
@@ -221,14 +221,42 @@ class NmaeInputRow4Pixel(QWidget):
         text-align: center;
         border: 2px solid #8f8f91;
         background-color: #fdfdfd;
-        min-width: 40px;        }        """)    
+        min-width: 40px;    max-width: 40px;     }        """)    
         self.setPixelCoords()    
         inputlayout.addWidget(self.pixelinfo_label)
         inputlayout.addWidget(self.coordedit)
 
+        self.delbtn=QPushButton()
+        self.delbtn.setText('x')
+        self.delbtn.setFixedWidth(10)
+        self.delbtn.setStyleSheet("background-color : red")
+        self.delbtn.clicked.connect(self.ondelete)
+        inputlayout.addWidget(self.delbtn)
+
         self.pixelinfo_label.setFixedHeight(20)
         self.setFixedHeight(58)
         self.setLayout(inputlayout)
+    def ondelete(self):
+        # print('clicked delete')
+        # self.pixelinfo_label.setText('')
+        # self.coordedit.setText('')
+        # self.coordedit.setStyleSheet("""QLineEdit {    
+        # border-radius: 3px;    
+        # text-align: center;
+        # border: 2px solid #8f8f91;
+        # background-color: #FF0000;
+        # min-width: 40px;    max-width: 40px;     }        """) 
+        # self.delbtn.setEnabled(False)
+        # self.pixelcoords=QPoint(0,0)
+
+        # import sip
+        # layout.removeWidget(self.widget_name)
+        # sip.delete(self.widget_name)
+        # self.widget_name = None
+        self.parent.ondelete(int(self.coordinatefor))
+
+        self.setParent(None)
+        
     def onTextChange(self):
         self.parent.onTextChange(self.coordinatefor)
 
@@ -292,8 +320,10 @@ class EmptyLinewidget(QWidget):
         self.mylayout.addWidget(self.scroll)
         self.setLayout(self.mylayout)
         self.setFixedHeight(350)
+        # self.parent=parent
     def mySetWidget(self,widget):
         self.scroll.setWidget(widget)
+    
     # def clear():
     #     for i in reversed(range(self.mylayout.count())): 
     #         self.coordlayout.itemAt(i).widget().setParent(None)
@@ -310,6 +340,28 @@ class DigitizedLine(EmptyLinewidget):
         self.line=[]
         # self.setFixedHeight(350)
         self.mySetWidget(mwidget)
+        self.parent=parent
+    def ondelete(self,indx):
+        print(indx,self.parent)
+        self.parent.ondelete(indx)
+        
+        # widget.setParent(None)
+        # print('clicked delete')
+        # self.pixelinfo_label.setText('')
+        # self.coordedit.setText('')
+        # self.coordedit.setStyleSheet("""QLineEdit {    
+        # border-radius: 3px;    
+        # text-align: center;
+        # border: 2px solid #8f8f91;
+        # background-color: #FF0000;
+        # min-width: 40px;    max-width: 40px;     }        """) 
+        # self.delbtn.setEnabled(False)
+        # self.pixelcoords=QPoint(0,0)
+
+        # import sip
+        # layout.removeWidget(self.widget_name)
+        # sip.delete(self.widget_name)
+        # self.widget_name = None
     def addRow(self,name,pixcoords):
         row = NmaeInputRow4Pixel(self.coordlayout.count()+1,pixcoords,name,parent=self)
         self.line.append((name,pixcoords))
@@ -415,11 +467,25 @@ class CoordinateSetting(QWidget):
         
         done=False
         for row in self.allrows:
-            print(row.isPixelSet())
+            # print('out',row.isPixelSet())
             if not row.isPixelSet():
                 row.setPixelCoords(point)
+                # print('in ',row.isPixelSet())
                 done=True
                 break
+        
+        
+        if self.allrows[1].isPixelSet():
+            xpoints=[self.allrows[0].pixelcoords,self.allrows[1].pixelcoords ]
+            self.display_line(xpoints)
+        # for i,r in enumerate(self.allrows):
+        #     print(i,'r is set',r.isPixelSet())
+        
+        # print('ypoints ',ypoints   )
+        if self.allrows[3].isPixelSet():
+            # print('self.allrows[3] is set', self.allrows[3])
+            ypoints=[self.allrows[2].pixelcoords,self.allrows[3].pixelcoords ]           
+            self.display_line(ypoints)
         if self.isAllpixelsSet():
             self.setbtn.setEnabled(True)
             # self.deactivateSetpixel=True
@@ -475,12 +541,28 @@ class CoordinateSetting(QWidget):
             # print('self.allcoords in coordsetting.py ',self.allcoords)
             return self.allcoords
         else:
-            return []    
+            return []   
+    def display_line(self,points):
+        path = QPainterPath()
+        p=points[0]
+        path.moveTo(p.x(), p.y())
+        for p in points:
+            path.lineTo(p.x(), p.y())
+        path_item = QGraphicsPathItem(path, None)
+        path_item.setPen(QPen(QColor("blue"), 8))
+
+        self.parent.viewer.scene.addItem(path_item) 
     def loadCoords(self,coordpath):
         # coordinates=np.load(coordpath) 
         rows=np.load(coordpath,allow_pickle=True)
         # rows
         self.allcoords=rows
+        if len(rows)==4:
+            xpoints=[rows[0]['pixel_loc'],rows[1]['pixel_loc'] ]
+            ypoints=[rows[2]['pixel_loc'],rows[3]['pixel_loc'] ]
+            self.display_line(xpoints)
+            self.display_line(ypoints)
+
         for row,objrow in zip(rows,self.allrows):
             # print(row['name'],row['pixel_loc'],row['value'])
             # coordinatefor

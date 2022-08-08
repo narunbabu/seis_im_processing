@@ -17,6 +17,24 @@ from PyQt5.QtWidgets import*
 from QtImageViewer import QtImageViewer
 import numpy as np
 
+class GraphicsPathItem(QGraphicsPathItem):
+    # def mousePressEvent(self, event):
+    #     super().mousePressEvent(event)
+    #     print("Local position:", event.pos())
+    #     print("Scene position:", event.scenePos())
+
+    def setPath(self,path):
+        if self.path() == QPainterPath():
+            return self.path()
+        pen = self.pen()
+        ps = QPainterPathStroker()
+        ps.setCapStyle(pen.capStyle())
+        width = 2 * max(0.00000001, pen.widthF())
+        ps.setWidth(width)
+        ps.setJoinStyle(pen.joinStyle())
+        ps.setMiterLimit(pen.miterLimit())
+        return ps.createStroke(path)
+
 class myListWidget(QListWidget):
 
    def Clicked(self,item):
@@ -26,7 +44,7 @@ class myListWidget(QListWidget):
 class PlotDigitizer(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        self.linename=''
         self.printer = QPrinter()
         self.scaleFactor = 0.0
         self.projectname=''
@@ -51,8 +69,8 @@ class PlotDigitizer(QMainWindow):
 
         self.listWidget = myListWidget()
         # self.listWidget.resize(300,150)
-        self.listWidget.setFixedWidth(150)
-        self.coordsettingwdgt.setFixedWidth(150)
+        self.listWidget.setFixedWidth(250)
+        self.coordsettingwdgt.setFixedWidth(250)
 
         self.lineWidget=DigitizedLine(self)
         # self.lineWidget.setFixedWidth(250)
@@ -137,7 +155,10 @@ class PlotDigitizer(QMainWindow):
         # self.editcoordinates=mbool
         self. editCoordsAct.setEnabled(mbool)
         self.iscoordinatesSet=False
-        print('self.iscoordinatesSet,self.editcoordinates in setcoordinatesEditable',self.iscoordinatesSet,self.editcoordinates)
+        # print('self.iscoordinatesSet,self.editcoordinates in setcoordinatesEditable',self.iscoordinatesSet,self.editcoordinates)
+    def ondelete(self,indx):
+        del self.lines[self.linename][indx]
+        print(self.lines[self.linename])
     def open_project(self):
         options = QFileDialog.Options()
         self.listWidget.clear()
@@ -171,6 +192,7 @@ class PlotDigitizer(QMainWindow):
                     for name,scenePos in self.lines[self.linename]:
                         print('   ',name,scenePos)
                         self.display_label(scenePos)
+                    self.display_line([sp for _,sp in self.lines[self.linename]])
             # file.close()
             # image = QImage(self.fileName)
             # if image.isNull():
@@ -357,7 +379,7 @@ class PlotDigitizer(QMainWindow):
         self.aboutQtAct = QAction("About &Qt", self, triggered=qApp.aboutQt)
 
         self.editCoordsAct =QAction("&Enter Coords", self,enabled=False, checkable=True, shortcut="Ctrl+E", triggered=self.editCoords )
-        self.createlineAct =QAction("&Edit Line", self,enabled=False, checkable=True, shortcut="Ctrl+L", triggered=self.createLine )
+        self.createlineAct =QAction("&Start Line", self,enabled=False, checkable=True, shortcut="Ctrl+L", triggered=self.createLine )
         self.editPointsAct =QAction("&Enter Points", self,enabled=False, checkable=True, shortcut="Ctrl+T", triggered=self.editPoints )
 
     def createMenus(self):
@@ -433,6 +455,20 @@ class PlotDigitizer(QMainWindow):
         # ellipse1.translate(-50, -5)
 
         self.viewer.scene.addItem(ellipse)
+    def display_line(self,points):
+        path = QPainterPath()
+        # print('points in display_line ',points)
+        if len(points)>1:
+            p=points[0]
+            path.moveTo(p.x(), p.y())
+            for p in points:
+                path.lineTo(p.x(), p.y())
+            path_item = QGraphicsPathItem(path, None)
+            path_item.setPen(QPen(QColor("red"), 8))
+
+            self.viewer.scene.addItem(path_item)
+
+
     def editCoords(self):
         if not self.iscoordinatesSet:
             self.editcoordinates= not self.editcoordinates
@@ -457,25 +493,28 @@ class PlotDigitizer(QMainWindow):
             for p in self.lines[line]:
                 print('        ',p)
     def createLine(self):
-        if len(self.linename)>0:
+        if  len(self.linename)>0:
             self.lines[self.linename]=self.lineWidget.getLine()
 
         namedlg=getNameDialog()
-        self.linename=namedlg.getName()
-        
-        self.lines[self.linename]=[]
-        # print('in createLine after',self.linename)
-        self.listWidget.addItem(self.linename)
-        # self.editlines= not self.editlines
-        self.editlines=True
-        cursor = Qt.CrossCursor
-        self.viewer.setCursor(cursor)
-        self.lineeditingdone=False
-        self.allsaved=False
-        self.lineWidget.clearAll()
+        try:
+            self.linename=namedlg.getName()
+            if len(self.linename)>0:
+                self.lines[self.linename]=[]
+                # print('in createLine after',self.linename)
+                self.listWidget.addItem(self.linename)
+                # self.editlines= not self.editlines
+                self.editlines=True
+                cursor = Qt.CrossCursor
+                self.viewer.setCursor(cursor)
+                self.lineeditingdone=False
+                self.allsaved=False
+                self.lineWidget.clearAll()
+        except:
+            None
 
     def handleLeftClick(self, x, y):
-        print('self.iscoordinatesSet,self.editcoordinates in handleLeftClick',self.iscoordinatesSet,self.editcoordinates)
+        # print('self.iscoordinatesSet,self.editcoordinates in handleLeftClick',self.iscoordinatesSet,self.editcoordinates)
         if not self.iscoordinatesSet:
             if self.editcoordinates:
                 # coorddict=self.mydialog.getResults()
@@ -501,6 +540,7 @@ class PlotDigitizer(QMainWindow):
                 self.lines[self.linename].append(('',scenePos))
                 self.lineWidget.addRow('',scenePos)
                 self.display_label(scenePos)
+                self.display_line([sp for _,sp in self.lines[self.linename]])
                 # self.editcoordinates= not self.editcoordinates
                 
                 # print(self.lines[self.linename])
