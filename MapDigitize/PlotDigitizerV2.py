@@ -67,7 +67,6 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
     changePos = pyqtSignal(QPointF)
     # self.label_position = QGraphicsSimpleTextItem("(%d, %d)" % (pos.x(), pos.y()))
     def __init__(self, name_point,name='',parent=None):
-        
         pos=name_point[1]
         x,y,w,h=pos.x()+point_deviation, pos.y()+point_deviation,point_width,point_width
         super(QGraphicsEllipseItem, self).__init__(x, y, w, h,None)
@@ -75,7 +74,6 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
         self.label_position.setPos(pos.x(), pos.y())
         self.type='point'
         self.shotPointNumber=MyInt(name_point[0])
-        # print('name_point in ClickableQGraphicsEllipseItem', self.shotPointNumber)
         self.parent=parent
         self.origx=pos.x() 
         self.origy=pos.y()
@@ -85,30 +83,25 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
         self.setFlags(self.ItemIsSelectable|self.ItemIsMovable)
         self.initial_pos=(self.pos().x(), self.pos().y())
     def getSPfromdialog(self):
-        text, ok = QInputDialog.getText(self.parent.parent, 'Text Input Dialog', 'Enter Shotpoint:',QLineEdit.Normal, str(self.shotPointNumber))
-
+        text, ok = QInputDialog.getText(self.parent.parent, 'Text Input Dialog', 'Enter Shotpoint:')
         if ok:
-            # self.setCursor(Qt.CrossCursor)
             return text
         else:
             return ''   
     def mousePressEvent(self, event):
         super(QGraphicsEllipseItem, self).mousePressEvent(event)
         if event.button() == Qt.LeftButton:
-            # print('item clicked!', self.pos().x(), self.pos().y())    
+            print('item clicked!', self.pos().x(), self.pos().y())    
             self.initial_pos=(self.pos().x(), self.pos().y())
     def mouseDoubleClickEvent(self, event):
         super(QGraphicsEllipseItem, self).mouseDoubleClickEvent(event)
         if event.button() == Qt.LeftButton:
             self.editShotPointnumber()
     def editShotPointnumber(self):
-
         text=self.getSPfromdialog()
-        # text=str(int(time.time()))
         self.shotPointNumber=MyInt(text)
-        print('in editShotPointnumber ',text)
         self.updateTextLabel()
-        self.parent.handleShotpointNumberchange(self.shotPointNumber,self.name,self.getCoords())    
+        self.parent.handleShotpointNumberchange(self.shotPointNumber,self.name)    
         return 0    
 
     def mouseReleaseEvent(self, event):
@@ -120,11 +113,11 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
             difpoint.setY(-self.initial_pos[1]+self.pos().y())
             absdiff=abs(difpoint.x())+abs(difpoint.y())
 
-            # print('absdiff ',absdiff)
+            print('absdiff ',absdiff)
             if absdiff>1:
                 self.parent.handleEllipseItemRelased(difpoint,self.name)
             # self.origx
-            # print('item release!',self.name, difpoint.x(), difpoint.y()) 
+            print('item release!',self.name, difpoint.x(), difpoint.y()) 
     def mymoveTo(self,pos):        
         self.origx=pos[0]
         self.origy=pos[1]
@@ -136,342 +129,43 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
     def getRemoved(self):
         self.parent.scene.removeItem(self.label_position)
         self.parent.scene.removeItem(self)
-    def getAdded(self):
-        self.parent.scene.addItem(self.label_position)
-        self.parent.scene.addItem(self)
     def getCoords(self):
         return [self.origx,self.origy]
-    def setName(self,name):
-        self.name=name
-    # def hide(self):
-
-
-
-
-class LineItem:
-    def __init__(self,name,scene,parent=None,qpen=QPen(QColor("red"), 8)):
-        # super().__init__(parent)
-        # self.labels=[]
-        self.graphicPoints=[]
-        self.scene=scene
-        self.name=name
-        self.parent=parent
-        self.path = QPainterPath()
-        self.path_item = ClickableGraphicsPathItem(self.path, qpen,name,parent=self.parent)
-        self.scene.addItem(self.path_item)
-        self.isVisible=True
-    def append(self,name_point):
-        p=name_point[1]
-        ellipse=ClickableQGraphicsEllipseItem(name_point,name=str(len(self.graphicPoints)),parent=self)        
-        self.scene.addItem(ellipse)
-        self.graphicPoints.append(ellipse) 
-        if len(self.graphicPoints)>1:
-            self.path.lineTo(p.x(), p.y())
-        else:
-            self.path.moveTo(p.x(), p.y())
-        self.path_item.setPath(self.path)
-
-    def appendonNew(self,name_point):
-        self.append(name_point)
-        self.graphicPoints[-1].editShotPointnumber()
-        # self.sortLineNomessage()
-        return 0       
-
-    def handleEllipseItemRelased(self,pos,name):       
-        for i,point in enumerate(self.graphicPoints):
-            if point.name == name:
-                idx=i 
-                break
-        posx,posy=self.graphicPoints[idx].pos().x(),self.graphicPoints[idx].pos().y()       
-        newposx,newposy=self.graphicPoints[idx].origx+pos.x(),self.graphicPoints[idx].origy+pos.y()        
-        self.graphicPoints[idx].mymoveTo([newposx,newposy])
-        # self.onPointPositionChange([newposx,newposy],pointindx=idx)
-        self.parent.handlePointPositionChange(self.name,point.name,point.shotPointNumber,point.getCoords())
-        self.reDraw()
-
-    def handleShotpointNumberchange(self,shotpointnumber,name,point): 
-        point_name=name
-        self.parent.handlePointPositionChange(self.name,point_name,shotpointnumber,point)      
-    def reDraw(self):
-        self.path = QPainterPath()
-        if len(self.graphicPoints)>=1:
-            p=self.graphicPoints[0].getCoords()
-            self.path.moveTo(p[0], p[1])
-            for gp in self.graphicPoints:
-                p=gp.getCoords()
-                self.path.lineTo(p[0], p[1])
-        self.path_item.setPath(self.path)
-        # print('in redraw()',time.time())
-        # self.parent.setCrossCursor()
-    def hideLine(self):
-        if self.isVisible:
-            self.path = QPainterPath()
-            self.path_item.setPath(self.path)
-            for i in self.graphicPoints:
-                i.getRemoved()
-            self.isVisible=False
-    def showLine(self):
-        if not self.isVisible:
-            self.reDraw()
-            for i in self.graphicPoints:
-                i.getAdded()
-            self.isVisible=True
-        
-
-    def removegraphicPoint(self,indx):
-        try:
-            self.graphicPoints[indx].getRemoved()
-            del self.graphicPoints[indx] 
-        except:
-            print('Unable to remove point')
-
-    def ondelete_in_lineitem(self,indx):
-        self.removegraphicPoint(indx)
-        return self.reDraw()
-    def getLine(self):
-        line=[]
-        for gp in self.graphicPoints:
-            p=gp.getCoords()
-            line.append([str(gp.shotPointNumber),QtCore.QPointF(p[0], p[1])])
-        return line
-    def sortLineNomessage(self):
-        print('in')
-        sps=np.array([gp.shotPointNumber for gp in self.graphicPoints])
-        for i in range(len(sps)-1,0,-1):
-            if sps[i]==0:
-                self.removegraphicPoint(i)
-        sps=np.array([gp.shotPointNumber for gp in self.graphicPoints])      
-        sortindxs=np.argsort(sps)
-        newgraphicPoints=[]
-        for i in sortindxs:       
-            newgraphicPoints.append(self.graphicPoints[i])
-
-        self.graphicPoints=newgraphicPoints
-        self.reDraw()
-    def setName2lastPoint(self,name):
-        self.graphicPoints[-1].setName(name)
-
-
-class CoordinateSetting(QWidget):
+class EmptyLinewidget(QWidget):
     def __init__(self,parent=None):
         super().__init__(parent)
-        self.allcoords=[]
-        self.freezcoordinatesetting =False
-        self.parent=parent
-        self.graphicPoints=[]
-        # self.isAllvaluesSet=False
-        self.coordlayout= QVBoxLayout()   
-        
-        self.x1c=CoordInputRow('X1')
-        self.x2c=CoordInputRow('X2')
-        self.y1c=CoordInputRow('Y1')
-        self.y2c=CoordInputRow('Y2')
-        self.allrows=[self.x1c,self.x2c,self.y1c,self.y2c]
-        for row in self.allrows:
-            self.coordlayout.addWidget(row)
-
-
-        self.setbtn = QPushButton("Set Map Coordinates")
-        self.setbtn.clicked.connect(self.setCoordinates)
-        self.unfreezebtn = QPushButton("Unfreez")
-        self.unfreezebtn.clicked.connect(self.unfreeze)
-
-        self.exportbtn = QPushButton("Export")
-        
-        # self.exportbtn.clicked.connect(self.ExportCoordinates)
-
-        self.coordlayout.addWidget(self.setbtn)
-        self.coordlayout.addWidget(self.unfreezebtn)
-        self.setLayout(self.coordlayout)
-        self.setFixedHeight(310)
-        self.setbtn.setEnabled(False)
-        self.unfreezebtn.setEnabled(False)
-
-    def clearAll(self):
-        print('in wgt clearAll')
-        self.setbtn.setEnabled(False)
-        self.unfreezebtn.setEnabled(False)
-        for row in self.allrows:
-            row.clearAll()
-            # row.setCoord(0)
-    
-    def setPixelCoords(self,point):         
-        done=False
-        for row in self.allrows:
-            # print('out',row.isPixelSet())
-            if not row.isPixelSet():
-                row.setPixelCoords(point)
-                # print('in ',row.isPixelSet())
-                done=True
-                break
-        
-        
-        if self.allrows[1].isPixelSet():
-            xpoints=[self.allrows[0].pixelcoords,self.allrows[1].pixelcoords ]
-            self.display_line(xpoints)
-        # for i,r in enumerate(self.allrows):
-        #     print(i,'r is set',r.isPixelSet())
-        
-        # print('ypoints ',ypoints   )
-        if self.allrows[3].isPixelSet():
-            # print('self.allrows[3] is set', self.allrows[3])
-            ypoints=[self.allrows[2].pixelcoords,self.allrows[3].pixelcoords ]           
-            self.display_line(ypoints)
-        if self.isAllpixelsSet():
-            self.setbtn.setEnabled(True)
-            # self.deactivateSetpixel=True
-            return False
-        return True
-
-    def isAllpixelsSet(self):
-        allset=True
-        for row in self.allrows:
-            if not row.isPixelSet():
-                allset=False
-        return allset
-    def isAllvaluesSet(self):
-        allset=True
-        for row in self.allrows:
-            if not row.isValueset():
-                allset=False
-        # if not allset:
-        #     msg= QMessageBox('Please set all values'+self.coordinatefor)
-        #     msg.exec_()
-        return allset
-    def setCoordinates(self):
-        if self.isNamesUnique():
-            if self.isAllvaluesSet():
-                self.allcoords=[]
-                for row in self.allrows:
-                    if row.isValueset():
-                        self.allcoords.append(row.getCoordinates())
-                self.freezcoordinatesetting=True
-                self.setbtn.setEnabled(False)
-                self.unfreezebtn.setEnabled(True)
-                displayMessageBox('Set coordinates. Now you can export them')
-            else:
-                displayMessageBox('First set all the values!!!')
-        else:
-            displayMessageBox('Names repeating. Set them right')
-        return True
-
-    def isNamesUnique(self):
-        allnames=[row.getCoordName() for row in self.allrows]
-        names=np.unique(allnames)
-        if len(allnames)==len(names):
-            return True
-        else:
-            return False
-
-    def getCoordinates(self):
-        if self.isAllvaluesSet(): 
-            self.allcoords=[]
-            for row in self.allrows:
-                if row.isValueset():
-                    self.allcoords.append(row.getCoordinates())
-            # print('self.allcoords in coordsetting.py ',self.allcoords)
-            return self.allcoords
-        else:
-            return []   
-    def display_line(self,points):
-        path = QPainterPath()
-        p=points[0]
-        path.moveTo(p.x(), p.y())
-        for p in points:
-            path.lineTo(p.x(), p.y())
-        path_item = QGraphicsPathItem(path, None)
-        path_item.setPen(QPen(QColor("blue"), 8))
-
-        self.parent.viewer.scene.addItem(path_item) 
-    def onLineSelect(self,name):
-        None
-    def handlePointPositionChange(self,linename,pointname,spnumber,point):
-        print('in handlePointPositionChange',linename,spnumber)
-
-        for row in self.allrows:
-            # print(row.coordinatefor==pointname)
-            if row.coordinatefor==pointname:
-                # print('----',row.pixelinfo_label.text())
-                row.setPixelCoords(QPoint(int(point[0]),int(point[1])) )
-                row.coordedit.setText(str(spnumber))
-        
-                # print('in ',row.isPixelSet())
-                # done=True
-                # break
-
-        # if linename==self.linename:
-        #     self.lineWidget.clearAll()      
-        #     line=self.lineitems[self.linename].getLine()
-        #     self.lineWidget.setLine(line)
-
-    def loadCoords(self,coordpath):
-        # coordinates=np.load(coordpath) 
-        rows=np.load(coordpath,allow_pickle=True)
-        # rows
-        self.allcoords=rows
-        if len(rows)==4:
-            xpoints=[rows[0]['pixel_loc'],rows[1]['pixel_loc'] ]
-            ypoints=[rows[2]['pixel_loc'],rows[3]['pixel_loc'] ]
-            
-            self.xlineitem=LineItem('X-Axis',self.parent.viewer.scene,parent=self,qpen=QPen(QColor("blue"), 8))  
-            row=rows[0]   
-            
-            print(row)
-            self.xlineitem.append([str(int(row['value'])),row['pixel_loc']])
-            self.xlineitem.setName2lastPoint('X1')
-            row=rows[1]  
-            self.xlineitem.append([str(int(row['value'])),row['pixel_loc']])
-            self.xlineitem.setName2lastPoint('X2')
-            self.ylineitem=LineItem('Y-Axis',self.parent.viewer.scene,parent=self,qpen=QPen(QColor("blue"), 8))   
-            row=rows[2]           
-            self.ylineitem.append([str(int(row['value'])),row['pixel_loc']])
-            self.ylineitem.setName2lastPoint('Y1')
-            row=rows[3]  
-            self.ylineitem.append([str(int(row['value'])),row['pixel_loc']])
-            self.ylineitem.setName2lastPoint('Y2')
-
-            # self.display_line(xpoints)
-            # self.display_line(ypoints)
-
-        for row,objrow in zip(rows,self.allrows):
-            # print(row['name'],row['pixel_loc'],row['value'])
-            # coordinatefor
-            objrow.setCoordName(row['name'])
-            objrow.setPixelCoords(row['pixel_loc'])
-            objrow.setCoord(str(row['value']))
-            objrow.changebtn.setEnabled(True)
-            objrow.coordedit.setEnabled(True)
-        self.freezcoordinatesetting=True
-        self.unfreezebtn.setEnabled(True)
-        
-    def unfreeze(self):
-        qm = QMessageBox()
-        ret=qm.question(self,'', "Are you sure to reset all the values?", qm.Yes | qm.No)
-        if ret == qm.Yes:
-            self.clearAll()
-            self.parent.setcoordinatesEditable(True)    
-
- 
-class LineWdget(QWidget):
-    def __init__(self,parent=None):
-        super().__init__(parent)    
         self.scroll = QScrollArea()   
+        #Scroll Area Properties
+
         self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.scroll.setWidgetResizable(True)
+        # self.scroll.setWidget(self.widget)
         self.mylayout= QVBoxLayout() 
         self.mylayout.addWidget(self.scroll)
         self.setLayout(self.mylayout)
-        self.setFixedHeight(350)        
-        self.coordlayout= QVBoxLayout() 
+        self.setFixedHeight(350)
+        # self.parent=parent
+    def mySetWidget(self,widget):
+        self.scroll.setWidget(widget)
+
+class LineWdget(EmptyLinewidget):
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        # self.allcoords=[]
+        # scrollwidget=EmptyLinewidget()
         mwidget=QWidget()
+        self.coordlayout= QVBoxLayout() 
         mwidget.setLayout(self.coordlayout)
         self.line=[]
-        self.scroll.setWidget(mwidget)
+        
+        # self.setFixedHeight(350)
+        self.mySetWidget(mwidget)
         self.parent=parent
     def ondelete(self,indx):
         print(indx,self.parent)
-        self.parent.ondelete(indx-1)    
+        self.parent.ondelete(indx-1)
+    
     def addRow(self,name,pixcoords):
         row = NmaeInputRow4Pixel(self.coordlayout.count()+1,pixcoords,name,parent=self)
         self.line.append([name,pixcoords])
@@ -533,7 +227,116 @@ class LineWdget(QWidget):
             self.clearAll()
             self.parent.setcoordinatesEditable(True)    
 
- 
+class LineItem:
+    def __init__(self,name,scene,parent=None):
+        # super().__init__(parent)
+        # self.labels=[]
+        self.graphicPoints=[]
+
+        self.scene=scene
+        self.name=name
+        self.parent=parent
+        self.path = QPainterPath()
+        self.path_item = ClickableGraphicsPathItem(self.path, QPen(QColor("red"), 8),name,parent=self.parent)
+        self.scene.addItem(self.path_item)
+
+    def append(self,name_point):
+        # self.line.append([name_point[0],name_point[1]])
+        p=name_point[1]
+        ellipse=ClickableQGraphicsEllipseItem(name_point,name=str(len(self.graphicPoints)),parent=self)        
+        self.scene.addItem(ellipse)
+        self.graphicPoints.append(ellipse) 
+        if len(self.graphicPoints)>1:
+            self.path.lineTo(p.x(), p.y())
+        else:
+            self.path.moveTo(p.x(), p.y())
+        self.path_item.setPath(self.path)
+
+    def appendonNew(self,name_point):
+        self.append(name_point)
+        self.graphicPoints[-1].editShotPointnumber()
+        # self.sortLineNomessage()
+        return 0       
+
+    def handleEllipseItemRelased(self,pos,name):       
+        for i,point in enumerate(self.graphicPoints):
+            if point.name == name:
+                idx=i 
+                break
+        posx,posy=self.graphicPoints[idx].pos().x(),self.graphicPoints[idx].pos().y()       
+        newposx,newposy=self.graphicPoints[idx].origx+pos.x(),self.graphicPoints[idx].origy+pos.y()        
+        self.graphicPoints[idx].mymoveTo([newposx,newposy])
+        # self.onPointPositionChange([newposx,newposy],pointindx=idx)
+        self.parent.handlePointPositionChange(self.name)
+        self.reDraw()
+
+    def handleShotpointNumberchange(self,shotpointnumber,name): 
+        self.parent.handlePointPositionChange(self.name)      
+        # for i,point in enumerate(self.graphicPoints):
+        #     if point.name == name:
+        #         idx=i 
+        #         break
+        
+        # if idx<len(self.graphicPoints):
+        #     # print(self.line[idx])
+        #     # self.line[idx][0]=str(shotpointnumber)
+            
+        # else:
+        #     print('error idx > line length',idx,len(self.line))
+        # return 0
+
+    # def onPointPositionChange(self,newpos,pointindx=0):
+        # print('*********vs*********** \n*********vs***********\n', self.line)
+        # if len(self.graphicPoints)>pointindx:
+        #     self.line[pointindx][1].setX(newpos[0])
+        #     self.line[pointindx][1].setY(newpos[1])
+        #     # # print('*********vs*********** \n*********vs***********\n', self.line)
+        
+        # self.parent.handlePointPositionChange(self.name)
+
+    def reDraw(self):
+        self.path = QPainterPath()
+        if len(self.graphicPoints)>=1:
+            p=self.graphicPoints[0].getCoords()
+            self.path.moveTo(p[0], p[1])
+            for gp in self.graphicPoints:
+                p=gp.getCoords()
+                self.path.lineTo(p[0], p[1])
+        self.path_item.setPath(self.path)
+        
+    def removegraphicPoint(self,indx):
+        # del self.line[indx]
+        self.graphicPoints[indx].getRemoved()
+        del self.graphicPoints[indx] 
+
+    def ondelete_in_lineitem(self,indx):
+        self.removegraphicPoint(indx)
+        return self.reDraw()
+    def getLine(self):
+        line=[]
+        for gp in self.graphicPoints:
+            p=gp.getCoords()
+            line.append([str(gp.shotPointNumber),QtCore.QPointF(p[0], p[1])])
+        return line
+    # def setLine(self,line):
+    #     self.line=line
+    #     self.reDraw()
+    #     print('redrawn')
+    def sortLineNomessage(self):
+        print('in')
+        sps=np.array([gp.shotPointNumber for gp in self.graphicPoints])
+        sortindxs=np.argsort(sps)
+        newgraphicPoints=[]
+        print(sortindxs,sps)
+        for i in sortindxs:
+            if sps[i]!=0:
+                newgraphicPoints.append(self.graphicPoints[i])
+            else:
+                self.removegraphicPoint(i)
+        self.graphicPoints=newgraphicPoints
+        self.reDraw()
+
+    
 
 class PlotDigitizer(QMainWindow):
     def __init__(self):
@@ -542,8 +345,6 @@ class PlotDigitizer(QMainWindow):
         self.printer = QPrinter()
         self.scaleFactor = 0.0
         self.projectname=''
-        # self.mywidget=QWidget(self)
-        # self.mywidget.setCursor(Qt.CrossCursor)
         # self.lines={}
         # self.labels=[]
         self.lineitems={}
@@ -579,10 +380,7 @@ class PlotDigitizer(QMainWindow):
         self.exportbtn = QPushButton("Export")
         self.exportbtn.clicked.connect(self.exportXls)
 
-        self.selectAllbtn = QPushButton("Deselect All")
-        self.selectAllbtn.clicked.connect(self.selectAll)
 
-        wgtslayout.addWidget(self.selectAllbtn)
         wgtslayout.addWidget(self.exportbtn)    
         wgtswidget.setLayout(wgtslayout)
         wgtswidget.setFixedWidth(210)
@@ -592,7 +390,6 @@ class PlotDigitizer(QMainWindow):
         hlayout.addWidget(self.viewer)
         hlayout.addWidget(wgtswidget)
         hwidget.setLayout(hlayout)
-
 
         self.setCentralWidget(hwidget)
 
@@ -626,11 +423,7 @@ class PlotDigitizer(QMainWindow):
     #     ellipse=ClickableQGraphicsEllipseItem(pos,name=str(random.randint(0,90)),parent=self.viewer)        
     #     self.viewer.scene.addItem(ellipse)
     #     self.graphicPoints.append(ellipse)
-    def keyPressEvent(self, e):
-        if e.key() == 88: #pressing x
-            self.editPoints()
-            print('pressed x',e.key())
-        # self.setCrossCursor()
+
     def display_label(self, pos):
         pen = QPen(QColor(Qt.yellow))
         delta = QtCore.QPoint(30, -15)
@@ -661,15 +454,8 @@ class PlotDigitizer(QMainWindow):
 
     def listitemClicked(self,item):
         line=self.lineWidget.getLine()
-        if item.checkState() == Qt.Checked:
-            # print(item.text(),'Item checked')
-            self.lineitems[item.text()].showLine()
-
-        else:
-            # print(item.text(),'Item not checked')
-            self.lineitems[item.text()].hideLine()
-
-
+        # if len(line)>0:
+        #     self.lines[self.linename]=line
         self.lineWidget.clearAll()      
         if item.text() in self.lineitems:
             self.linename=item.text()
@@ -684,14 +470,14 @@ class PlotDigitizer(QMainWindow):
                     else:
                         sitem.deselectItem()
                     # break          
-        self.statusBar().showMessage('The selected line is: '+self.linename + ' in '+self.projectname.split('/')[-1])
+        self.statusBar().showMessage('The selected line is: '+self.linename)
     
     def onLineSelect(self,name):
         self.linename=name          
         if self.linename:
-            self.statusBar().showMessage('The selected line is: '+self.linename + ' in '+self.projectname.split('/')[-1])
+            self.statusBar().showMessage('The selected line is: '+self.linename)
         else:
-            self.statusBar().showMessage('The selected line is: None'+ + ' in '+self.projectname.split('/')[-1])
+            self.statusBar().showMessage('The selected line is: None')
         # print('self.lineitems.keys() ',list(self.lineitems.keys()))
         idx=np.where(np.array(list(self.lineitems.keys()))==self.linename)[0][0]
         # print(idx)
@@ -703,27 +489,23 @@ class PlotDigitizer(QMainWindow):
         # self.editcoordinates=mbool
         self. editCoordsAct.setEnabled(mbool)
         self.iscoordinatesSet=False
-       
+        # print('self.iscoordinatesSet,self.editcoordinates in setcoordinatesEditable',self.iscoordinatesSet,self.editcoordinates)
+    def ondelete(self,indx):
         # print(len(self.lines[self.linename]),self.linename,indx)
         # print(self.lines[self.linename])
         # del self.lines[self.linename][indx]      
         # self.lines[self.linename]=self.lineitems[self.linename].ondelete(indx)
         
-       
-        # print(self.lines[self.linename])
-    def ondelete(self,indx):        
         self.lineitems[self.linename].ondelete_in_lineitem(indx)
         
         self.lineWidget.clearAll()
         self.lineWidget.setLine(self.lineitems[self.linename].getLine())
-        # self.lineWidget.clearAll()
-        # self.lineWidget.setLine(self.lines[self.linename])
         # print(self.lines[self.linename])
+    
     def clearAll(self):
         for item in self.viewer.scene.items():
-            # if item is not self.viewer._pixmapHandle:
-            self.viewer.scene.removeItem(item)
-            del item
+            if item is not self.viewer._pixmapHandle:
+                self.viewer.scene.removeItem(item)
         self.linename=''
 
         self.scaleFactor = 0.0
@@ -738,32 +520,21 @@ class PlotDigitizer(QMainWindow):
         self.coordsettingwdgt.clearAll()
         self.lineWidget.clearAll()
         self.listWidget.clear()
-    def addItemtoListwidget(self,listWidget,name):
-        print('in addItemtoListwidget',name)
-        item = QListWidgetItem()
-        item.setText(name)
-        item.setFlags(item.flags() |Qt.ItemIsUserCheckable)
-        item.setCheckState(Qt.Checked)
-        listWidget.addItem(item)
     def createLine(self):
         # if  len(self.linename)>0:
         #     self.lines[self.linename]=self.lineWidget.getLine()
-        self.viewer.canPan = False
+
         namedlg=getNameDialog()
         try:
             self.linename=namedlg.getName()
             if len(self.linename)>0:
-                print(' in create line',self.linename)
-                # self.lines[self.linename]=[]
+                self.lines[self.linename]=[]
                 # self.lineitems[self.linename]=[]
-                self.addItemtoListwidget(self.listWidget, self.linename)
                 self.lineitems[self.linename]=LineItem(self.linename,self.viewer.scene,parent=self)
-                # print(self.lineitems)
                 # print('in createLine after',self.linename)
-                
+                self.listWidget.addItem(self.linename)
                 # self.editlines= not self.editlines
                 # self.editlines=True
-
                 self.isnewline=True
                 cursor = Qt.CrossCursor
                 self.viewer.setCursor(cursor)
@@ -773,14 +544,14 @@ class PlotDigitizer(QMainWindow):
         except:
             self.linename=''
             None
-    def handlePointPositionChange(self,linename,pointname,spnumber,pixelcoords):
+    def handlePointPositionChange(self,linename):
         if linename==self.linename:
             self.lineWidget.clearAll()      
             line=self.lineitems[self.linename].getLine()
             self.lineWidget.setLine(line)
             # self.lines[self.linename]=line
-        # if self.editlines:
-        #     self.setCrossCursor()
+        if self.editlines:
+            self.setCrossCursor()
         return 0
 
 
@@ -797,9 +568,7 @@ class PlotDigitizer(QMainWindow):
 
                 scenePos = self.viewer.mapToScene(QtCore.QPoint(row, column))
                 self.iscoordinatesSet=  not self.coordsettingwdgt.setPixelCoords(scenePos)
-                if self.iscoordinatesSet: 
-                    self.createlineAct.setEnabled(True)
-                    self.editPointsAct.setEnabled(True)
+                if self.iscoordinatesSet: self. createlineAct.setEnabled(True)
                 # print("scenePos handleLeftClick self.iscoordinatesSet",scenePos,self.iscoordinatesSet)
                 # pos= QtCore.QPoint(int(scenePos.x()), int(scenePos.y()))
                 self.display_label(scenePos)
@@ -811,28 +580,27 @@ class PlotDigitizer(QMainWindow):
                 self.time=time.time()
                 # if displayedlabel:
                 timediff=self.time-self.prevtime
-                print('timediff this',timediff)
-                if timediff>0.5:
+                print('timediff ',timediff)
+                if timediff>4:
                     row = int(x)
                     column = int(y)
                     scenePos = self.viewer.mapToScene(QtCore.QPoint(row, column))
+                    # self.lines[self.linename].append(['',scenePos])
                     self.lineitems[self.linename].appendonNew(['',scenePos])
+                    # self.lines[self.linename]=self.lineitems[self.linename].getLine()
+                    # self.lineWidget.addRow('',scenePos)
                 self.prevtime=self.time
+
                 if self.editlines:
                     self.lineitems[self.linename].sortLineNomessage()
-                    self.editlines= False
-                    self.lineeditingdone=True
-                    self.viewer.canPan=True
+                # self.viewer.scene.addItem(path_item)
+                self.editlines= False
+                if not self.isnewline:
                     self.setArrowCursor()
-                # self.viewer.DragMode(0)
-                # if not self.isnewline:
-                #     self.setArrowCursor()
-                # else:
-                #     self.setCrossCursor()
-                # print(dir(self.viewer.cursor))
-                # print(self.viewer.cursor.__name__)
-                # print(self.viewer.cursor.__str__())     
-        else:            
+                
+
+        else:
+            
             None
     def setArrowCursor(self):
         cursor = Qt.ArrowCursor
@@ -841,12 +609,10 @@ class PlotDigitizer(QMainWindow):
         self.lineeditingdone=True
         self.setArrowCursor()
         self.isnewline=False
-        self.viewer.canPan = True
         # print('mid click')
     def setLines(self,lines):
         for linename in lines.keys():
-            # self.listWidget.addItem(linename)
-            self.addItemtoListwidget(self.listWidget, linename)
+            self.listWidget.addItem(linename)
             # print(self.linename)
             self.lineitems[linename]=LineItem(linename,self.viewer.scene,parent=self)
             # newlines[self.linename]=[]
@@ -861,8 +627,7 @@ class PlotDigitizer(QMainWindow):
                                                   'PlotDigi file (*.pd )') #, options=options
 
         # self.projectname='D:/Ameyem/Bhugarbho/JOGMEC/ShotpointMap/Vietnam/North.pd'
-        self.statusBar().showMessage('%s started.' % self.projectname)
-        # print(self.projectname)
+        print(self.projectname)
         if self.projectname:
             file = open(self.projectname,'r')
             text=file.read().split('\n')
@@ -875,20 +640,28 @@ class PlotDigitizer(QMainWindow):
             self.open(filename=impath)
             if len(self.coordspath)>2:                
                 self.coordsettingwdgt.loadCoords(self.coordspath)
-                self.updatLimitedActions()
-                # self.updateActions()
+                # self.coordinates=self.coordsettingwdgt.getCoordinates()
+                self.iscoordinatesSet=True
+                self.editCoordsAct.setEnabled(False)
+                self.createlineAct.setEnabled(True)
             if len(linespath)<2:
                 linespath=self.projectname.replace('.pd','') +'/lines.npy'
 
             lines=np.load(linespath,allow_pickle=True).item()
-
+            # newlines={}
+            # print('self.lines ',self.lines)
             self.setLines(lines)
-            self.selectAllbtn.setText('Select All')
+                    # newlines[self.linename].append([name,scenePos])
+            # self.lines=newlines
 
+                # self.viewer.scene.addItem(path_item)
+            # file.close()
+            # image = QImage(self.fileName)
+            # if image.isNull():
+            #     QMessageBox.information(self, "Image Viewer", "Cannot load %s." % self.fileName)
+            #     return
+                                        #    PJ-038-1006_00051270-1 
     def open(self,filename=''):
-        
-        if self.viewer.hasImage(): self.viewer.clearImage()
-        self.clearAll()
         options = QFileDialog.Options()
         # self.fileName = QFileDialog.getOpenFileName(self, "Open File", QDir.currentPath())
         if filename:
@@ -901,7 +674,6 @@ class PlotDigitizer(QMainWindow):
             if image.isNull():
                 QMessageBox.information(self, "Image Viewer", "Cannot load %s." % self.fileName)
                 return
-            self.statusBar().showMessage('%s started.' % self.fileName)
 
             # self.imageLabel.setPixmap(QPixmap.fromImage(image))
             self.viewer.setImage(image)
@@ -927,48 +699,22 @@ class PlotDigitizer(QMainWindow):
             # self.scrollArea.setVisible(True)
             # self.printAct.setEnabled(True)
             self.fitToWindowAct.setEnabled(True)
-            self.editPointsAct.setEnabled(False)
             self.updateActions()
 
             # if not self.fitToWindowAct.isChecked():
             #     self.imageLabel.adjustSize()
-    def getSelectedLines(self):
-        lines={}
-        selectedlines=[]
-        for i in range(self.listWidget.count()):
-            item=self.listWidget.item(i)
-            if item.checkState() == Qt.Checked:
-                selectedlines.append(item.text())
-        for linename in selectedlines:
-            lines[linename]=self.lineitems[linename].getLine()
-        return lines
     def getLines(self):
         lines={}
         for linename in self.lineitems:
             lines[linename]=self.lineitems[linename].getLine()
         return lines
-    def selectAll(self):
-        if self.selectAllbtn.text()=='Select All':
-            for i in range(self.listWidget.count()):
-                item=self.listWidget.item(i)
-                item.setCheckState(Qt.Checked)
-                self.lineitems[item.text()].showLine()
-            self.selectAllbtn.setText('Deselect All')
-        else:
-            for i in range(self.listWidget.count()):
-                item=self.listWidget.item(i)
-                item.setCheckState(Qt.Unchecked)
-                self.lineitems[item.text()].hideLine()
-            self.selectAllbtn.setText('Select All')
-
-
     def exportXls(self):
-        lines=self.getSelectedLines()        
+        lines=self.getLines()        
         if self.iscoordinatesSet & (len(lines)>0):
             coordinates=self.coordsettingwdgt.getCoordinates()  
             converter=CoordConverter(coordinates,lines)
             df=converter.getLineCoords()
-            excel_filename,_ = QFileDialog.getSaveFileName(self, 'Save File','D:\Ameyem\Bhugarbho\JOGMEC\ShotpointMap//','Xls file (*.xlsx )')
+            excel_filename,_ = QFileDialog.getSaveFileName(self, 'Save File','','Xls file (*.xlsx )')
             df[['lno','shotpoint','X-Coord','Y-Coord']].to_excel(excel_filename)
             displayMessageBox('Successfully Exported to \n'+excel_filename)
             return 1
@@ -1172,12 +918,7 @@ class PlotDigitizer(QMainWindow):
         self.menuBar().addMenu(self.editMenu)
         self.menuBar().addMenu(self.viewMenu)
         self.menuBar().addMenu(self.helpMenu)
-    def updatLimitedActions(self):
-        self.iscoordinatesSet=True
-        self.editCoordsAct.setEnabled(False)
-        self.createlineAct.setEnabled(True)
-        self.editPointsAct.setEnabled(True)
-        self.sortLineAct.setEnabled(True)
+
     def updateActions(self):
         self.zoomInAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.zoomOutAct.setEnabled(not self.fitToWindowAct.isChecked())
@@ -1185,7 +926,6 @@ class PlotDigitizer(QMainWindow):
         self.normalSizeAct.setEnabled(not self.fitToWindowAct.isChecked())
         self. editCoordsAct.setEnabled(True)
         self. editPointsAct.setEnabled(True)
-        self.sortLineAct.setEnabled(True)
 
     def scaleImage(self, factor):
 

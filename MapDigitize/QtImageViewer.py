@@ -4,7 +4,7 @@
 
 import os.path
 try:
-    from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QT_VERSION_STR
+    from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QT_VERSION_STR,QPointF
     from PyQt5.QtGui import QImage, QPixmap, QPainterPath
     from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QFileDialog,QLabel,QGraphicsSimpleTextItem
 except ImportError:
@@ -165,6 +165,8 @@ class QtImageViewer(QGraphicsView):
         """ Maintain current zoom on resize.
         """
         self.updateViewer()
+    def handleEllipseItemRelased(self,pos,name):       
+        None
 
     def mousePressEvent(self, event):
         """ Start mouse pan or zoom mode.
@@ -174,6 +176,7 @@ class QtImageViewer(QGraphicsView):
         if event.button() == Qt.LeftButton:
             if self.canPan:
                 self.setDragMode(QGraphicsView.ScrollHandDrag)
+
             # self.leftMouseButtonPressed.emit(scenePos.x(), scenePos.y())
             self.leftMouseButtonPressed.emit(event.pos().x(), event.pos().y())
         elif event.button() == Qt.RightButton:
@@ -199,6 +202,7 @@ class QtImageViewer(QGraphicsView):
                 self.scene.setSelectionArea(QPainterPath())  # Clear current selection area.
                 if selectionBBox.isValid() and (selectionBBox != viewBBox):
                     self.zoomStack.append(selectionBBox)
+                    print(self.zoomStack)
                     self.updateViewer()
             self.setDragMode(QGraphicsView.NoDrag)
             self.rightMouseButtonReleased.emit(scenePos.x(), scenePos.y())
@@ -215,7 +219,70 @@ class QtImageViewer(QGraphicsView):
                 self.updateViewer()
             self.rightMouseButtonDoubleClicked.emit(scenePos.x(), scenePos.y())
         QGraphicsView.mouseDoubleClickEvent(self, event)
+    def applyZoom(self,factor):
 
+        if self.canZoom:
+            sceneBBox = self.sceneRect()
+            # print(dir(self))
+            # print('viewBBox ', viewBBox)
+            vprect=self.viewport().rect()
+            # print('self.viewport().rect() ',self.viewport().rect())
+            
+
+            # vieportrect=self.mapToScene(self.viewport().rect())
+
+            
+            # print('vprect ',vprect.x(),vprect.y(),vprect.width(), vprect.height())
+            # print(dir(vieportrect))
+            svprect = QRectF(self.mapToScene(vprect.x(),vprect.y()), self.mapToScene(vprect.width(), vprect.height()))
+            viewBBox=svprect
+            if svprect.x()<0:
+                viewBBox.setX(sceneBBox.x())
+                viewBBox.setWidth(sceneBBox.width())
+            if svprect.y()<0:
+                viewBBox.setY(sceneBBox.y())
+                viewBBox.setHeight(sceneBBox.height())
+
+            # selBox=self.scene.sceneRect()
+            # print('scene.sceneRect of vprect ', scenerect)
+
+            # print('vieportrect ', vieportrect.value(4))
+            # print('visibleRegion ',self.visibleRegion(),'rect ',self.rect(),'viewportMargins ',self.viewportMargins(),'screen ',self.screen())
+            left=viewBBox.x()+viewBBox.width()/2
+            top=viewBBox.y()+viewBBox.height()/2
+            w,h=viewBBox.width() * factor, viewBBox.height() * factor
+            print('viewBBox.width() , viewBBox.height() ',viewBBox.width() , viewBBox.height())
+
+            print('w,h ',w,h)
+            x,y=left-w/2,top-h/2
+            print('x,y,w,h ',x,y,w,h)
+            # x,y,w,h=max(left-w/2,viewBBox.x()),max(top-h/2,viewBBox.y()),min(w,viewBBox.width()),min(h,viewBBox.height())
+            
+            x,y,w,h=max(x,sceneBBox.x()),max(y,sceneBBox.y()),min(w,sceneBBox.width()),min(h,sceneBBox.height())
+            print('x,y,w,h ',x,y,w,h)
+
+            box=QRectF(x,y,w,h)
+            # print('viewBBox ', box)
+            # selectionBBox = self.scene.selectionArea().boundingRect().intersected(box)
+            # print('selectionBBox ', selectionBBox)
+            self.scene.setSelectionArea(QPainterPath())  # Clear current selection area.
+            # if selectionBBox.isValid() and (selectionBBox != viewBBox):
+            self.zoomStack.append(box)
+            print('zoomStack length: ',len(self.zoomStack))
+            self.updateViewer()
+
+        # if self.hasImage():
+        #     # unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
+        #     # self.scale(1 / unity.width(), 1 / unity.height())
+            
+        #     # factor = min(viewrect.width() / scenerect.width(),
+        #     #              viewrect.height() / scenerect.height())
+        #     self.scale(factor, factor)
+        # #     rect = self.viewport().rect()
+        # #     scenerect = self.transform().mapRect(rect)
+        # #     self.zoomStack.append(scenerect)
+        # # self._zoom = 0
+        # self.updateViewer()
     def myfitInView(self, scale=True):
         # rect = QRectF(self._pixmapHandle.pixmap().rect())
 
