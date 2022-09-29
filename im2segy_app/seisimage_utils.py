@@ -179,7 +179,14 @@ def getCleanedCurve_old(shifts2bapplied):
     return shifts2bapplied
 def findHorlineIndex(clipped_im,horizontalsize=30):
     h,w=clipped_im.shape
-    selim=clipped_im[:int(h/10),:int(w/55)]
+    ch,cw=int(h/10),int(w/55)
+    if ch<200 or cw<200:
+        if ch<200:
+            ch=200
+        if cw<200:
+            cw=200
+    selim=clipped_im[:ch,:cw]
+
     horizontal = cv2.adaptiveThreshold(selim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
     rows,cols = horizontal.shape
     # horizontalsize = 30
@@ -201,6 +208,26 @@ def findHorlineIndex(clipped_im,horizontalsize=30):
             return idxs[0]
     else:
         return mindx
+def findHorlineIndex_alt(clipped_im,horizontalsize=30):
+    h,w=clipped_im.shape
+    ch,cw=int(h/10),int(w/55)
+    if ch<200 or cw<200:
+        if ch<200:
+            ch=200
+        if cw<200:
+            cw=200
+    selim=clipped_im[:ch,:cw]
+    horizontal = cv2.adaptiveThreshold(selim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
+    selim=horizontal.astype(float)
+    res=selim.sum(axis=1)
+    mindx=np.argmin(res)
+    checkval=np.mean(res)-2*np.std(res)
+    if checkval<0:
+        checkval=np.mean(res)
+    idxs=np.where(res>checkval)[0]
+    fbreak=np.where(np.diff(idxs)>1)[0]
+    return np.mean(idxs[:fbreak[0]]).astype(int)
+
 def findMidpointsofHorlines(clipped_im):
     h,w=clipped_im.shape
     selim=clipped_im[:int(h/5),:int(w/55)]
@@ -279,11 +306,18 @@ def getCleanedCurve(shifts2bapplied,returnsmooth=False):
     return shifts2bapplied
 def getColumnShifts(clipped_im,zerotlineid):
     mp=zerotlineid
-    pad=int(clipped_im.shape[0]/30)
-    fpad,bpad=pad,pad
-    #     print(mp,pad)
-    if pad>mp:
-        fpad=mp
+    # pad=int(clipped_im.shape[0]/30)
+    # fpad,bpad=pad,pad
+    # #     print(mp,pad)
+    # if pad>mp:
+    #     fpad=mp
+    denom=30
+    pad=int(clipped_im.shape[0]/denom)
+    while pad<mp:
+        denom-=5
+        print(denom,pad,mp)
+        pad=int(clipped_im.shape[0]/denom) 
+    fpad,bpad=mp,pad
     resim=clipped_im[mp-fpad:mp+bpad,:]
 
     horizontal = cv2.adaptiveThreshold(resim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
@@ -302,9 +336,10 @@ def getColumnShifts(clipped_im,zerotlineid):
     ffpad=3 if fpad/2 >3 else int(fpad/2 )
     fbpad=3
     midxs=[]
-    window=10
+    window=60
     for i in range(window,opencvOutput.shape[1],window):
         start,endx=mp-ffpad,mp+fbpad
+        # print('start,endx ',start,endx)
         if start<0:
             start=0
         poo=opencvOutput[start:endx,i-window:i]    

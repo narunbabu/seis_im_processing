@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import cv2
 from seisimage_utils import *
+import pandas as pd
 matplotlib.use('Qt5Agg')
 # matplotlib.use('TkAgg')
 try:
@@ -96,18 +97,21 @@ class WindowMixin(object):
 
 class CanvasMainWindow(QWidget, WindowMixin):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
+    # leftMouseButtonPressed = pyqtSignal(float, float)
+    # mouseMoveEvent= pyqtSignal(float, float)
 
     def __init__(self, default_filename=None, default_prefdef_class_file=None, default_save_dir=None,parent=None):
         super(CanvasMainWindow, self).__init__(parent)
         self.parent=parent
         self.setWindowTitle(__appname__)
-
+        # self.setMouseTracking(True)
         # Load setting in the main thread
         self.settings = Settings()
         self.settings.load()
         settings = self.settings
 
         self.os_name = platform.system()
+        self.cv2im=np.array(None)
 
         # Load string bundle for i18n
         self.string_bundle = StringBundle.get_bundle()
@@ -194,11 +198,11 @@ class CanvasMainWindow(QWidget, WindowMixin):
         self.dock.setObjectName(get_str('labels'))
         self.dock.setWidget(label_list_container)
 
-        self.file_list_widget = QListWidget()
-        self.file_list_widget.itemDoubleClicked.connect(self.file_item_double_clicked)
+        # self.file_list_widget = QListWidget()
+        # self.file_list_widget.itemDoubleClicked.connect(self.file_item_double_clicked)
         file_list_layout = QVBoxLayout()
         file_list_layout.setContentsMargins(0, 0, 0, 0)
-        file_list_layout.addWidget(self.file_list_widget)
+        # file_list_layout.addWidget(self.file_list_widget)
         file_list_container = QWidget()
         file_list_container.setLayout(file_list_layout)
         self.file_dock = QDockWidget(get_str('fileList'), self)
@@ -255,8 +259,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
                                  'Ctrl+Shift+O', 'open', get_str('openAnnotationDetail'))
         copy_prev_bounding = action(get_str('copyPrevBounding'), self.copy_previous_bounding_boxes, 'Ctrl+v', 'copy', get_str('copyPrevBounding'))
 
-        # open_next_image = action(get_str('nextImg'), self.open_next_image,
-        #                          'd', 'next', get_str('nextImgDetail'))
+        open_next_image = action(get_str('nextImg'), self.open_next_image,
+                                 'd', 'next', get_str('nextImgDetail'))
 
         # open_prev_image = action(get_str('prevImg'), self.open_prev_image,
         #                          'a', 'prev', get_str('prevImgDetail'))
@@ -455,13 +459,13 @@ class CanvasMainWindow(QWidget, WindowMixin):
         scroll.setMinimumWidth(500)
         
         self.actions.beginner = (
-            open,  None, 
+            open,  None, open_next_image,None,
             # verify, save,
             # create, copy, delete, None, #open_next_image, open_prev_image, open_dir, change_save_dir, save_format, 
             zoom_in, zoom, zoom_out, fit_window, None, est_rotation,rotate) #, fit_width,,antirotate
 
         self.actions.advanced = (
-            open,    None, #save, open_next_image, open_prev_image,open_dir, change_save_dir,save_format,
+            open,    None, open_next_image,None,#save, open_next_image, open_prev_image,open_dir, change_save_dir,save_format,
             # create_mode, edit_mode, None,
             hide_all, show_all)
 
@@ -539,6 +543,53 @@ class CanvasMainWindow(QWidget, WindowMixin):
         if self.file_path and os.path.isdir(self.file_path):
             self.open_dir_dialog(dir_path=self.file_path, silent=True)
 
+    # def mousePressEvent(self, event):
+    #     """ Start mouse pan or zoom mode.
+    #     """
+    #     # print(event.pos())
+    #     scenePos = self.mapToScene(event.pos())
+    #     if event.button() == Qt.LeftButton:
+    #         if self.canPan:
+    #             self.setDragMode(QGraphicsView.ScrollHandDrag)
+    #         # self.leftMouseButtonPressed.emit(scenePos.x(), scenePos.y())
+    #         self.leftMouseButtonPressed.emit(event.pos().x(), event.pos().y())
+    #     elif event.button() == Qt.RightButton:
+    #         if self.canZoom:
+    #             self.setDragMode(QGraphicsView.RubberBandDrag)
+    #         self.rightMouseButtonPressed.emit(scenePos.x(), scenePos.y())
+    #     elif event.button() == Qt.MidButton:
+    #         self.middleMouseButtonPressed.emit(scenePos.x(), scenePos.y())
+    #     QGraphicsView.mousePressEvent(self, event)
+    # def mouseMoveEvent(self, evt):
+    #     """Move the toolbar with mouse iteration."""
+    #     if self.cv2im.any():
+    #         cursor = QCursor()
+    #         pos = cursor.pos()
+    #         relative_pos = QWidget.mapFromGlobal(self, pos)
+
+    #         cursor_x = relative_pos.x()
+    #         cursor_y = relative_pos.y()
+    #         print('cursor_x, cursor_y ',cursor_x,cursor_y)
+
+    #         cvImg=self.cv2im[:100,100:200]
+            
+    #         height, width = cvImg.shape
+    #         cvImg =  cv2.cvtColor(cvImg,cv2.COLOR_GRAY2RGB)
+    #         bytesPerLine = 3 * width
+    #         qImg = QImage(cvImg, width, height, bytesPerLine, QImage.Format_RGB888)
+    #         pixmap=QPixmap.fromImage(qImg )
+    #         self.parent.mylabel.setPixmap(pixmap)
+
+    #         # scenePos = self.canvas.mapToScene(evt.pos())
+    #         # pixmap=QPixmap.fromImage(self.cv2im[:100,100:200])
+    #         # pixmap = pixmap.scaled(self.canvas.frameGeometry().size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    #         # self.parent.mylabel.setPixmap(pixmap)
+
+    #     print(evt.globalPos())
+
+    #     # delta = QPoint(evt.globalPos() - self.oldPos)
+    #     # self.move(self.x() + delta.x(), self.y() + delta.y())
+    #     # self.oldPos = evt.globalPos()
 
     def predict_keyvals_act(self):
         print('predictin fields')
@@ -1316,6 +1367,7 @@ class CanvasMainWindow(QWidget, WindowMixin):
             file_path = self.settings.get(SETTING_FILENAME)
 
         # Make sure that filePath is a regular python string, rather than QString
+
         file_path = ustr(file_path)
 
         # Fix bug: An  index error after select a directory when open a new file.
@@ -1323,14 +1375,14 @@ class CanvasMainWindow(QWidget, WindowMixin):
         unicode_file_path = os.path.abspath(unicode_file_path)
         # Tzutalin 20160906 : Add file list and dock to move faster
         # Highlight the file item
-        if unicode_file_path and self.file_list_widget.count() > 0:
-            if unicode_file_path in self.m_img_list:
-                index = self.m_img_list.index(unicode_file_path)
-                file_widget_item = self.file_list_widget.item(index)
-                file_widget_item.setSelected(True)
-            else:
-                self.file_list_widget.clear()
-                self.m_img_list.clear()
+        # if unicode_file_path and self.file_list_widget.count() > 0:
+        #     if unicode_file_path in self.m_img_list:
+        #         index = self.m_img_list.index(unicode_file_path)
+        #         # file_widget_item = self.file_list_widget.item(index)
+        #         # file_widget_item.setSelected(True)
+        #     else:
+        #         # self.file_list_widget.clear()
+        #         self.m_img_list.clear()
 
         if unicode_file_path and os.path.exists(unicode_file_path):
             if LabelFile.is_label_file(unicode_file_path):
@@ -1368,6 +1420,22 @@ class CanvasMainWindow(QWidget, WindowMixin):
             self.parent.__appname__=unicode_file_path
             # self.image = image
             self.file_path = unicode_file_path
+            mfile=self.file_path.split('\\')[-1]
+            mfile_str=mfile[:6]
+            print(mfile_str)
+            # print(self.trace_info['Fstr'])
+            # print('mfile_str ',mfile_str,np.where(self.trace_info['Fstr']==mfile_str))        
+            
+            try:
+                trace_info_indx=np.where(self.trace_info['Fstr']==mfile_str)[0][0]
+                self.no_of_traces=self.trace_info['Traces'].iloc[trace_info_indx]
+                self.parent.trace_count_edit.setText(str(self.no_of_traces))
+            except:
+                
+                msg = u'file not found in database'
+                QMessageBox.warning(self, u'Attention', msg)
+
+            # np.where(df['Fstr']=='0228')[0][0]
             self.filelable.setText(self.file_path)
             pixmap=QPixmap.fromImage(image )
             height = image.height()
@@ -1412,6 +1480,11 @@ class CanvasMainWindow(QWidget, WindowMixin):
             self.canvas.setFocus(True)
             return True
         return False
+    def get_no_of_traces(self):
+        if self.no_of_traces:
+            return self.no_of_traces
+        else:
+            return 0
 
 
 
@@ -1454,124 +1527,124 @@ class CanvasMainWindow(QWidget, WindowMixin):
         oh,ow,_=image.shape
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         return gray
-    def load_fileAsCVim(self, file_path=None):
+    # def load_fileAsCVim(self, file_path=None):
 
-        """Load the specified file, or the last opened file if None."""
-        self.reset_state()
-        self.canvas.setEnabled(False)
-        if file_path is None:
-            file_path = self.settings.get(SETTING_FILENAME)
+    #     """Load the specified file, or the last opened file if None."""
+    #     self.reset_state()
+    #     self.canvas.setEnabled(False)
+    #     if file_path is None:
+    #         file_path = self.settings.get(SETTING_FILENAME)
 
-        # Make sure that filePath is a regular python string, rather than QString
-        file_path = ustr(file_path)
+    #     # Make sure that filePath is a regular python string, rather than QString
+    #     file_path = ustr(file_path)
 
-        # Fix bug: An  index error after select a directory when open a new file.
-        unicode_file_path = ustr(file_path)
-        unicode_file_path = os.path.abspath(unicode_file_path)
-        # Tzutalin 20160906 : Add file list and dock to move faster
-        # Highlight the file item
-        if unicode_file_path and self.file_list_widget.count() > 0:
-            if unicode_file_path in self.m_img_list:
-                index = self.m_img_list.index(unicode_file_path)
-                file_widget_item = self.file_list_widget.item(index)
-                file_widget_item.setSelected(True)
-            else:
-                self.file_list_widget.clear()
-                self.m_img_list.clear()
+    #     # Fix bug: An  index error after select a directory when open a new file.
+    #     unicode_file_path = ustr(file_path)
+    #     unicode_file_path = os.path.abspath(unicode_file_path)
+    #     # Tzutalin 20160906 : Add file list and dock to move faster
+    #     # Highlight the file item
+    #     if unicode_file_path and self.file_list_widget.count() > 0:
+    #         if unicode_file_path in self.m_img_list:
+    #             index = self.m_img_list.index(unicode_file_path)
+    #             file_widget_item = self.file_list_widget.item(index)
+    #             file_widget_item.setSelected(True)
+    #         else:
+    #             self.file_list_widget.clear()
+    #             self.m_img_list.clear()
 
-        if unicode_file_path and os.path.exists(unicode_file_path):
-            if LabelFile.is_label_file(unicode_file_path):
-                try:
-                    self.label_file = LabelFile(unicode_file_path)
-                except LabelFileError as e:
-                    self.error_message(u'Error opening file',
-                                       (u"<p><b>%s</b></p>"
-                                        u"<p>Make sure <i>%s</i> is a valid label file.")
-                                       % (e, unicode_file_path))
-                    self.status("Error reading %s" % unicode_file_path)
-                    return False
+    #     if unicode_file_path and os.path.exists(unicode_file_path):
+    #         if LabelFile.is_label_file(unicode_file_path):
+    #             try:
+    #                 self.label_file = LabelFile(unicode_file_path)
+    #             except LabelFileError as e:
+    #                 self.error_message(u'Error opening file',
+    #                                    (u"<p><b>%s</b></p>"
+    #                                     u"<p>Make sure <i>%s</i> is a valid label file.")
+    #                                    % (e, unicode_file_path))
+    #                 self.status("Error reading %s" % unicode_file_path)
+    #                 return False
 
-                self.image_data = self.label_file.image_data
-                self.line_color = QColor(*self.label_file.lineColor)
-                self.fill_color = QColor(*self.label_file.fillColor)
-                self.canvas.verified = self.label_file.verified
-            else:
-                # Load image:
-                # read data first and store for saving into label file.
-                self.image_data = self.readbyCV2(unicode_file_path)
-                self.label_file = None
-                self.canvas.verified = False
+    #             self.image_data = self.label_file.image_data
+    #             self.line_color = QColor(*self.label_file.lineColor)
+    #             self.fill_color = QColor(*self.label_file.fillColor)
+    #             self.canvas.verified = self.label_file.verified
+    #         else:
+    #             # Load image:
+    #             # read data first and store for saving into label file.
+    #             self.image_data = self.readbyCV2(unicode_file_path)
+    #             self.label_file = None
+    #             self.canvas.verified = False
 
-            if isinstance(self.image_data, QImage):
-                image = self.image_data
-            else:
-                image = QImage.fromData(self.image_data)
-            if image.isNull():
-                self.error_message(u'Error opening file',
-                                   u"<p>Make sure <i>%s</i> is a valid image file." % unicode_file_path)
-                self.status("Error reading %s" % unicode_file_path)
-                return False
+    #         if isinstance(self.image_data, QImage):
+    #             image = self.image_data
+    #         else:
+    #             image = QImage.fromData(self.image_data)
+    #         if image.isNull():
+    #             self.error_message(u'Error opening file',
+    #                                u"<p>Make sure <i>%s</i> is a valid image file." % unicode_file_path)
+    #             self.status("Error reading %s" % unicode_file_path)
+    #             return False
             
-            self.status("Loaded %s" % os.path.basename(unicode_file_path))
-            self.parent.__appname__=unicode_file_path
-            # self.image = image
-            self.file_path = unicode_file_path
-            self.filelable.setText(self.file_path)
-            pixmap=QPixmap.fromImage(image )
-            # height = image.height()
-            # width=image.width()
-            # print('image.height() width ',height,image.width())
-            # if width>25000:
-            #     fact=int(100*25000/width)/100
-            #     print('*************fact',fact)
-            #     prop_height=int(height*fact)
-            #     prop_width=int(width*fact)
-            #     # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
-            #     pixmap = pixmap.scaledToHeight(prop_height)
-            #     # pixmap = pixmap.scaledToWidth(prop_width)
+    #         self.status("Loaded %s" % os.path.basename(unicode_file_path))
+    #         self.parent.__appname__=unicode_file_path
+    #         # self.image = image
+    #         self.file_path = unicode_file_path
+    #         self.filelable.setText(self.file_path)
+    #         pixmap=QPixmap.fromImage(image )
+    #         # height = image.height()
+    #         # width=image.width()
+    #         # print('image.height() width ',height,image.width())
+    #         # if width>25000:
+    #         #     fact=int(100*25000/width)/100
+    #         #     print('*************fact',fact)
+    #         #     prop_height=int(height*fact)
+    #         #     prop_width=int(width*fact)
+    #         #     # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
+    #         #     pixmap = pixmap.scaledToHeight(prop_height)
+    #         #     # pixmap = pixmap.scaledToWidth(prop_width)
 
-            self.canvas.load_pixmap(pixmap)
-            # print(oh,ow)
-            self.image = self.canvas.pixmap.toImage()
-            print('self.image  size',self.image.size())
-            # if self.label_file:
-            #     self.load_labels(self.label_file.shapes)
+    #         self.canvas.load_pixmap(pixmap)
+    #         # print(oh,ow)
+    #         self.image = self.canvas.pixmap.toImage()
+    #         print('self.image  size',self.image.size())
+    #         # if self.label_file:
+    #         #     self.load_labels(self.label_file.shapes)
 
-            # self.show_bounding_box_from_annotation_file(file_path)
-            # self.show_bounding_box_from_annotation_file('./boxes.txt')
-            self.load_Shapebyalgorithm()
-            return True
-        return False
+    #         # self.show_bounding_box_from_annotation_file(file_path)
+    #         # self.show_bounding_box_from_annotation_file('./boxes.txt')
+    #         self.load_Shapebyalgorithm()
+    #         return True
+    #     return False
 
-        print('qImg done from array')
-        self.canvas.load_pixmap(QPixmap(qImg))
-        try:
-            self.show_bounding_box_from_annotation_file('./boxes_mod.txt')
-        except:
-            self.show_bounding_box_from_annotation_file('./boxes.txt')
-        self.set_dirty()
-        self.update_combo_box()
+    #     print('qImg done from array')
+    #     self.canvas.load_pixmap(QPixmap(qImg))
+    #     try:
+    #         self.show_bounding_box_from_annotation_file('./boxes_mod.txt')
+    #     except:
+    #         self.show_bounding_box_from_annotation_file('./boxes.txt')
+    #     self.set_dirty()
+    #     self.update_combo_box()
 
-        # self.set_clean()
-        # self.canvas.setEnabled(True)
-        # self.adjust_scale(initial=True)
-        # self.paint_canvas()
-        # # self.add_recent_file(self.file_path)
-        # self.toggle_actions(True)
-        # print('In load_file shapes')
-        # shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
-        # print(shapes)
+    #     # self.set_clean()
+    #     # self.canvas.setEnabled(True)
+    #     # self.adjust_scale(initial=True)
+    #     # self.paint_canvas()
+    #     # # self.add_recent_file(self.file_path)
+    #     # self.toggle_actions(True)
+    #     # print('In load_file shapes')
+    #     # shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
+    #     # print(shapes)
 
-        # counter = self.counter_str()
-        # self.setWindowTitle(__appname__ + ' ' + file_path + ' ' + counter)
+    #     # counter = self.counter_str()
+    #     # self.setWindowTitle(__appname__ + ' ' + file_path + ' ' + counter)
 
-        # # Default : select last item if there is at least one item
-        # if self.label_list.count():
-        #     self.label_list.setCurrentItem(self.label_list.item(self.label_list.count() - 1))
-        #     self.label_list.item(self.label_list.count() - 1).setSelected(True)
+    #     # # Default : select last item if there is at least one item
+    #     # if self.label_list.count():
+    #     #     self.label_list.setCurrentItem(self.label_list.item(self.label_list.count() - 1))
+    #     #     self.label_list.item(self.label_list.count() - 1).setSelected(True)
 
-        # self.canvas.setFocus(True)
-        return True
+    #     # self.canvas.setFocus(True)
+    #     return True
 
         
 
@@ -1669,8 +1742,11 @@ class CanvasMainWindow(QWidget, WindowMixin):
         self.cv2im=cv2.cvtColor(self.cv2im, cv2.COLOR_BGR2GRAY)
         w,h=self.cv2im.shape
         hratio=1
-
-        idxes,idyes=getSectionBoundary(self.cv2im)     
+        try:
+            idxes,idyes=getSectionBoundary(self.cv2im)  
+        except:
+            idxes=[100,100]
+            idyes=[w-100,h-100]
         print('w,h,idxes,idyes ',w,h,idxes,idyes)   
         if len(idxes)<1:
             idxes=[100,100]
@@ -1727,44 +1803,20 @@ class CanvasMainWindow(QWidget, WindowMixin):
         clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
 
         zerotlineid=findHorlineIndex(clipped_im,horizontalsize=30)
-        self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
-        self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=return_smooth)
-
-        # thresh=clipped_im.mean()
-        # cv2.imwrite('clipped_im2.png', clipped_im)
-        # # clipped_im[clipped_im<=thresh]=1
-        # # clipped_im[clipped_im>=thresh]=0
-
-        # # self.crop_image = self.image.copy(rect)
-
-        # ncols=5
-        # h,w=clipped_im.shape
-        # # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
-        # resim=clipped_im[:int(3*h/100),int(w/400):int(w/55)] # This to be checked with image
-        # print('resim size ',resim.shape)
-        # width=int(getWidthofHorline(resim))
-        # print('width align_act',width)
-
-        # # Finding the midpoints of horizontal lines
-        # selim=clipped_im[:,:int(w/55)]
-        # h,w=selim.shape
-        # print('selim.shape ',selim.shape)
-        
-        # # mfilter=np.vstack([np.zeros((width,ncols))-0.5,np.ones((width,ncols)),np.zeros((width,ncols))-0.5])
-        # # midpoints=findMidpointsofHorlines(selim)
-        # # midpoints=findMidpointsofHorlines(clipped_im)
-
-
-        # zerotlineid=findHorlineIndex(clipped_im)
-        # # pad2blookedat=100
-        # self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
-
-        # self.shifts2bapplied=getCleanedCurve(shifts2bapplied)
-        # print('self.colnumbers,shifts2bapplied ',self.colnumbers,self.shifts2bapplied)
-
-        straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
-        self.load_cv2im( straightImage,isgrey=False)
-        print('Done alignment....')
+        if zerotlineid==0:
+            zerotlineid=findHorlineIndex(clipped_im,horizontalsize=10)
+            if zerotlineid==0:
+                zerotlineid=findHorlineIndex_alt(clipped_im,horizontalsize=10)
+        try:
+            self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
+            self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=return_smooth)    
+            straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
+            self.load_cv2im( straightImage,isgrey=False)
+            print('Done alignment....')
+        except:
+            msg=QMessageBox()
+            msg.setText('Error in alignement')
+            msg.exec_()
     def undo_align_act(self):
         pixmap = QPixmap.fromImage(self.image)
         # self.image=self.prev_image.copy()
@@ -1883,8 +1935,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
         return w / self.canvas.pixmap.width()
 
     def closeEvent(self, event):
-        if not self.may_continue():
-            event.ignore()
+        # if not self.may_continue():
+        #     event.ignore()
         settings = self.settings
         # If it loads images from dir, don't load it at the beginning
         if self.dir_name is None:
@@ -1921,7 +1973,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
             self.load_file(filename)
 
     def scan_all_images(self, folder_path):
-        extensions = ['.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
+        # extensions = ['.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
+        extensions = ['.tif']
         images = []
 
         for root, dirs, files in os.walk(folder_path):
@@ -1985,19 +2038,20 @@ class CanvasMainWindow(QWidget, WindowMixin):
         self.import_dir_images(target_dir_path)
 
     def import_dir_images(self, dir_path):
-        if not self.may_continue() or not dir_path:
-            return
-
+        # if not self.may_continue() or not dir_path:
+        #     return
+        # print(' in import_dir_images' )
         self.last_open_dir = dir_path
         self.dir_name = dir_path
         self.file_path = None
-        self.file_list_widget.clear()
+        # self.file_list_widget.clear()
         self.m_img_list = self.scan_all_images(dir_path)
         self.img_count = len(self.m_img_list)
-        self.open_next_image()
-        for imgPath in self.m_img_list:
-            item = QListWidgetItem(imgPath)
-            self.file_list_widget.addItem(item)
+        # print(self.m_img_list)
+        # self.open_next_image()
+        # for imgPath in self.m_img_list:
+        #     item = QListWidgetItem(imgPath)
+        #     self.file_list_widget.addItem(item)
 
     def verify_image(self, _value=False):
         # Proceeding next image without dialog if having any label
@@ -2043,6 +2097,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
                 self.load_file(filename)
 
     def open_next_image(self, _value=False):
+        print('in open_next_image')
+        print(self.file_path)
         # Proceeding next image without dialog if having any label
         if self.auto_saving.isChecked():
             if self.default_save_dir is not None:
@@ -2052,45 +2108,65 @@ class CanvasMainWindow(QWidget, WindowMixin):
                 self.change_save_dir_dialog()
                 return
 
-        if not self.may_continue():
-            return
+        # if not self.may_continue():
+        #     return
 
         if self.img_count <= 0:
             return
         
         if not self.m_img_list:
             return
-
+        # print(self.file_path,self.m_img_list )
+        files=[f.split('\\')[-1] for f in self.m_img_list]
         filename = None
         if self.file_path is None:
             filename = self.m_img_list[0]
             self.cur_img_idx = 0
         else:
+            mfile=self.file_path.split('\\')[-1]
+            print('mfile ',mfile)
+            self.cur_img_idx=np.where(np.array(files)==mfile)[0][0]
+            print('self.cur_img_idx ',self.cur_img_idx)
             if self.cur_img_idx + 1 < self.img_count:
                 self.cur_img_idx += 1
                 filename = self.m_img_list[self.cur_img_idx]
-
+        
         if filename:
             self.load_file(filename)
 
     def open_file(self, _value=False):
-        if not self.may_continue():
-            return
-        path = os.path.dirname(ustr(self.file_path)) if self.file_path else 'D:\Ameyem\Bhugarbho\JOGMEC\SeismicSection'
+        from pathlib import Path
+        # if not self.may_continue():
+        #     return
+        # print(self.file_path )
+        path = os.path.dirname(ustr(self.file_path)) if self.file_path else r'D:\Ameyem\Bhugarbho\\JOGMEC\SeismicSection\sabah\\rawimages'
+        print(path )
         # formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
         # formats = ['*.pdf' ]
         formats = ['*.tif' ]
 
         filters = "Tiff files (%s)".join(formats )
         filename,_ = QFileDialog.getOpenFileName(self, '%s - Choose Image file' % __appname__, path, filters)
+        
 
         # filename=r'D:/Ameyem/python/Digitization/TechMahindra/TechMData/PdfFiles/001.pdf'
         # filename=r'D:\Ameyem\python\Digitization\TechMahindra\TechMData\PdfFiles\DOCUMENT 3.pdf'
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            self.cur_img_idx = 0
-            self.img_count = 1
+            # self.cur_img_idx = 0
+            # self.img_count = 1
+            self.file_path=filename
+            dir_path=Path(filename).parent.absolute()
+            self.import_dir_images( dir_path)
+            try:
+                print(str(dir_path)+'/trace_info.xlsx')
+                self.trace_info=pd.read_excel(str(dir_path)+'/trace_info.xlsx',converters={'Fstr':str,'Traces':int})
+                print(self.trace_info)
+                
+            except:
+                print('No trace_info file found')
+
             self.load_file(filename)
             # self.load_pdffile(filename)
 
@@ -2138,8 +2214,8 @@ class CanvasMainWindow(QWidget, WindowMixin):
             # self.statusBar().show()
 
     def close_file(self, _value=False):
-        if not self.may_continue():
-            return
+        # if not self.may_continue():
+        #     return
         self.reset_state()
         self.set_clean()
         self.toggle_actions(False)

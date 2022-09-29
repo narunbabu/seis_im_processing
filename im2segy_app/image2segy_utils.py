@@ -566,13 +566,14 @@ def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
 
     traces=[]
     for i in range(len(pixrange)-1):
-    #     print(pixrange[i],pixrange[i+1])
         trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc:pixrange[i+1]+halfpixper_trc].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc)
+    #     print(pixrange[i],pixrange[i+1])
+        # trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc-3:pixrange[i+1]+halfpixper_trc+3].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc+6)
         nlesThalf=np.sum(trc<=pixper_trc/2)
         ngreThalf=np.sum(trc>pixper_trc/2)
         if ngreThalf/nlesThalf<0.01:
             trc[trc<=pixper_trc/2]=trc[trc<=pixper_trc/2]*0.3
-#     print(nlesThalf,ngreThalf,ngreThalf/nlesThalf)
+
     
         traces.append(trc)
     traces=np.array(traces).astype(float)

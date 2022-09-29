@@ -60,7 +60,7 @@ class ClickableQGraphicsSimpleTextItem(QGraphicsSimpleTextItem):
         name="SP: %s \n"%name_point[0]
         name+="(%d, %d)" % (pos.x(), pos.y())
         super(QGraphicsSimpleTextItem, self).__init__(name,None)
-        size=25
+        size=12
         self.setFont(QFont("Arial",size)) 
 
 class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
@@ -72,7 +72,7 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
         x,y,w,h=pos.x()+point_deviation, pos.y()+point_deviation,point_width,point_width
         super(QGraphicsEllipseItem, self).__init__(x, y, w, h,None)
         self.label_position = ClickableQGraphicsSimpleTextItem(name_point) 
-        self.label_position.setPos(pos.x(), pos.y())
+        self.label_position.setPos(pos.x(), pos.y()-50)
         self.type='point'
         self.shotPointNumber=MyInt(name_point[0])
         # print('name_point in ClickableQGraphicsEllipseItem', self.shotPointNumber)
@@ -132,7 +132,7 @@ class ClickableQGraphicsEllipseItem(QGraphicsEllipseItem):
     def updateTextLabel(self):
         name="SP: %d \n" % self.shotPointNumber+"(%d, %d)" % (int(self.origx), int(self.origy))
         self.label_position.setText(name)
-        self.label_position.setPos(int(self.origx), int(self.origy))
+        self.label_position.setPos(int(self.origx), int(self.origy)-50)
     def getRemoved(self):
         self.parent.scene.removeItem(self.label_position)
         self.parent.scene.removeItem(self)
@@ -550,7 +550,7 @@ class PlotDigitizer(QMainWindow):
         # self.graphicPoints=[]
         self.displayedlabel=False
         self.prevtime=time.time()
-
+        self.actionsUpdated=False
         self.editcoordinates= False
         # self.editPoints=False
         # self.notdone_setting=True
@@ -727,7 +727,7 @@ class PlotDigitizer(QMainWindow):
         self.linename=''
 
         self.scaleFactor = 0.0
-        self.projectname=''
+        # self.projectname=''
         # self.lines={}
         self.lineitems={}
         self.editcoordinates= False
@@ -785,7 +785,7 @@ class PlotDigitizer(QMainWindow):
 
 
     def handleLeftClick(self, x, y):
-        # print('self.iscoordinatesSet,self.editcoordinates in handleLeftClick',self.iscoordinatesSet,self.editcoordinates)
+
         if not self.iscoordinatesSet:
             if self.editcoordinates:
                 
@@ -798,9 +798,9 @@ class PlotDigitizer(QMainWindow):
                 scenePos = self.viewer.mapToScene(QtCore.QPoint(row, column))
                 self.iscoordinatesSet=  not self.coordsettingwdgt.setPixelCoords(scenePos)
                 if self.iscoordinatesSet: 
-                    self.createlineAct.setEnabled(True)
-                    self.editPointsAct.setEnabled(True)
-                # print("scenePos handleLeftClick self.iscoordinatesSet",scenePos,self.iscoordinatesSet)
+                    if not self.actionsUpdated:
+                        self.updateActions()
+                        self.actionsUpdated=True
                 # pos= QtCore.QPoint(int(scenePos.x()), int(scenePos.y()))
                 self.display_label(scenePos)
                 self.editcoordinates= not self.editcoordinates
@@ -862,7 +862,7 @@ class PlotDigitizer(QMainWindow):
 
         # self.projectname='D:/Ameyem/Bhugarbho/JOGMEC/ShotpointMap/Vietnam/North.pd'
         self.statusBar().showMessage('%s started.' % self.projectname)
-        # print(self.projectname)
+        
         if self.projectname:
             file = open(self.projectname,'r')
             text=file.read().split('\n')
@@ -875,15 +875,19 @@ class PlotDigitizer(QMainWindow):
             self.open(filename=impath)
             if len(self.coordspath)>2:                
                 self.coordsettingwdgt.loadCoords(self.coordspath)
-                self.updatLimitedActions()
-                # self.updateActions()
+                # self.updatLimitedActions()
+                self.actionsUpdated=True
+                self.updateActions()
             if len(linespath)<2:
                 linespath=self.projectname.replace('.pd','') +'/lines.npy'
+            try:
+                lines=np.load(linespath,allow_pickle=True).item()
 
-            lines=np.load(linespath,allow_pickle=True).item()
-
-            self.setLines(lines)
+                self.setLines(lines)
+            except:
+                print('Lines file not available')
             self.selectAllbtn.setText('Select All')
+            print(self.projectname)
 
     def open(self,filename=''):
         
@@ -901,7 +905,8 @@ class PlotDigitizer(QMainWindow):
             if image.isNull():
                 QMessageBox.information(self, "Image Viewer", "Cannot load %s." % self.fileName)
                 return
-            self.statusBar().showMessage('%s started.' % self.fileName)
+            if not self.projectname or len(self.projectname)<2:
+                self.statusBar().showMessage('%s started.' % self.fileName)
 
             # self.imageLabel.setPixmap(QPixmap.fromImage(image))
             self.viewer.setImage(image)
@@ -927,8 +932,10 @@ class PlotDigitizer(QMainWindow):
             # self.scrollArea.setVisible(True)
             # self.printAct.setEnabled(True)
             self.fitToWindowAct.setEnabled(True)
-            self.editPointsAct.setEnabled(False)
-            self.updateActions()
+            # self.editPointsAct.setEnabled(False)
+            self.disableActions()
+            self.actionsUpdated=False
+            self.iscoordinatesSet=False
 
             # if not self.fitToWindowAct.isChecked():
             #     self.imageLabel.adjustSize()
@@ -1008,7 +1015,14 @@ class PlotDigitizer(QMainWindow):
             os.makedirs(self.projectname.replace('.pd','')  )
         except:
             displayMessageBox('Project already exist give different name')
-            return self.file_save_as()
+            quit_msg = "Project already exist. You want to overwrite it?"
+            reply = QMessageBox.question(self, 'Message', 
+                            quit_msg, QMessageBox.Yes, QMessageBox.No)
+            if reply:
+                return self.file_save_as()
+            else:
+                return self.save()
+                
         self.save()
        
         # text = self.fileName +'\n'
@@ -1026,6 +1040,7 @@ class PlotDigitizer(QMainWindow):
         # file.close()
     def file_save(self):
         import os
+        print('self.projectname ',self.projectname)
         if not self.projectname:
             self.file_save_as()
             return 0
@@ -1172,20 +1187,31 @@ class PlotDigitizer(QMainWindow):
         self.menuBar().addMenu(self.editMenu)
         self.menuBar().addMenu(self.viewMenu)
         self.menuBar().addMenu(self.helpMenu)
-    def updatLimitedActions(self):
-        self.iscoordinatesSet=True
-        self.editCoordsAct.setEnabled(False)
-        self.createlineAct.setEnabled(True)
-        self.editPointsAct.setEnabled(True)
-        self.sortLineAct.setEnabled(True)
+    # def updatLimitedActions(self):
+    #     self.zoomInAct.setEnabled(not self.fitToWindowAct.isChecked())
+    #     self.zoomOutAct.setEnabled(not self.fitToWindowAct.isChecked())
+    #     self.zoomOnLineAct.setEnabled(not self.fitToWindowAct.isChecked())
+    #     self.normalSizeAct.setEnabled(not self.fitToWindowAct.isChecked())
+    #     self.iscoordinatesSet=True
+    #     self.editCoordsAct.setEnabled(False)
+    #     self.createlineAct.setEnabled(True)
+    #     self.editPointsAct.setEnabled(True)
+    #     self.sortLineAct.setEnabled(True)
     def updateActions(self):
         self.zoomInAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.zoomOutAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.zoomOnLineAct.setEnabled(not self.fitToWindowAct.isChecked())
         self.normalSizeAct.setEnabled(not self.fitToWindowAct.isChecked())
-        self. editCoordsAct.setEnabled(True)
-        self. editPointsAct.setEnabled(True)
+        self.editCoordsAct.setEnabled(False)
+        self.iscoordinatesSet=True
+        self.createlineAct.setEnabled(True)
+        self.editPointsAct.setEnabled(True)
         self.sortLineAct.setEnabled(True)
+    def disableActions(self):
+        self.editCoordsAct.setEnabled(True)
+        self.createlineAct.setEnabled(False)
+        self.editPointsAct.setEnabled(False)
+        self.sortLineAct.setEnabled(False)
 
     def scaleImage(self, factor):
 
@@ -1220,8 +1246,6 @@ class PlotDigitizer(QMainWindow):
         
     def editPoints(self):
         if len(self.linename)>0:
-        # if not self.iscoordinatesSet:
-            # self.editPoints= not self.editPoints
             self.lineeditingdone=False
             self.editlines=True
             self.setCrossCursor()
