@@ -177,26 +177,7 @@ def getCleanedCurve_old(shifts2bapplied):
     shifts2bapplied[pttable]=mav[pttable]+1
     shifts2bapplied[nttable]=mav[nttable]+1
     return shifts2bapplied
-def findHorlineIndex(clipped_im,horizontalsize=30):
-    h,w=clipped_im.shape
-    ch,cw=int(h/10),int(w/55)
-    if ch<200 or cw<200:
-        if ch<200:
-            ch=200
-        if cw<200:
-            cw=200
-    selim=clipped_im[:ch,:cw]
-
-    horizontal = cv2.adaptiveThreshold(selim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
-    rows,cols = horizontal.shape
-    # horizontalsize = 30
-    horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontalsize,2))
-    # horizontal = cv2.erode(horizontal, horizontalStructure, (-1, -1))
-    horizontal = cv2.dilate(horizontal, horizontalStructure, (-1, -1))
-    selim=horizontal.astype(float)
-
-    # selim[selim<=127.0]=1
-    # selim[selim>127.0]=0
+def getIndex(selim):
     res=selim.sum(axis=1)
     mindx=np.argmin(res)
     checkval=np.mean(res)-2*np.std(res)
@@ -208,6 +189,31 @@ def findHorlineIndex(clipped_im,horizontalsize=30):
             return idxs[0]
     else:
         return mindx
+def findHorlineIndex(clipped_im,horizontalsize=30):
+    h,w=clipped_im.shape
+    ch,cw=int(h/10),int(w/55)
+    if ch<200 or cw<200:
+        if ch<200:
+            ch=200
+        if cw<200:
+            cw=200
+    selim=clipped_im[:ch,:cw]
+    idx=getIndex(selim)
+    print('findHorlineIndex ',idx)
+    if idx>5:
+        return idx
+    else:
+        horizontal = cv2.adaptiveThreshold(selim,255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,15,-2)
+        rows,cols = horizontal.shape
+        # horizontalsize = 30
+        horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontalsize,2))
+        # horizontal = cv2.erode(horizontal, horizontalStructure, (-1, -1))
+        horizontal = cv2.dilate(horizontal, horizontalStructure, (-1, -1))
+        selim=horizontal.astype(float)
+        return getIndex(selim)
+
+    
+    
 def findHorlineIndex_alt(clipped_im,horizontalsize=30):
     h,w=clipped_im.shape
     ch,cw=int(h/10),int(w/55)

@@ -543,54 +543,7 @@ class CanvasMainWindow(QWidget, WindowMixin):
         if self.file_path and os.path.isdir(self.file_path):
             self.open_dir_dialog(dir_path=self.file_path, silent=True)
 
-    # def mousePressEvent(self, event):
-    #     """ Start mouse pan or zoom mode.
-    #     """
-    #     # print(event.pos())
-    #     scenePos = self.mapToScene(event.pos())
-    #     if event.button() == Qt.LeftButton:
-    #         if self.canPan:
-    #             self.setDragMode(QGraphicsView.ScrollHandDrag)
-    #         # self.leftMouseButtonPressed.emit(scenePos.x(), scenePos.y())
-    #         self.leftMouseButtonPressed.emit(event.pos().x(), event.pos().y())
-    #     elif event.button() == Qt.RightButton:
-    #         if self.canZoom:
-    #             self.setDragMode(QGraphicsView.RubberBandDrag)
-    #         self.rightMouseButtonPressed.emit(scenePos.x(), scenePos.y())
-    #     elif event.button() == Qt.MidButton:
-    #         self.middleMouseButtonPressed.emit(scenePos.x(), scenePos.y())
-    #     QGraphicsView.mousePressEvent(self, event)
-    # def mouseMoveEvent(self, evt):
-    #     """Move the toolbar with mouse iteration."""
-    #     if self.cv2im.any():
-    #         cursor = QCursor()
-    #         pos = cursor.pos()
-    #         relative_pos = QWidget.mapFromGlobal(self, pos)
-
-    #         cursor_x = relative_pos.x()
-    #         cursor_y = relative_pos.y()
-    #         print('cursor_x, cursor_y ',cursor_x,cursor_y)
-
-    #         cvImg=self.cv2im[:100,100:200]
-            
-    #         height, width = cvImg.shape
-    #         cvImg =  cv2.cvtColor(cvImg,cv2.COLOR_GRAY2RGB)
-    #         bytesPerLine = 3 * width
-    #         qImg = QImage(cvImg, width, height, bytesPerLine, QImage.Format_RGB888)
-    #         pixmap=QPixmap.fromImage(qImg )
-    #         self.parent.mylabel.setPixmap(pixmap)
-
-    #         # scenePos = self.canvas.mapToScene(evt.pos())
-    #         # pixmap=QPixmap.fromImage(self.cv2im[:100,100:200])
-    #         # pixmap = pixmap.scaled(self.canvas.frameGeometry().size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-    #         # self.parent.mylabel.setPixmap(pixmap)
-
-    #     print(evt.globalPos())
-
-    #     # delta = QPoint(evt.globalPos() - self.oldPos)
-    #     # self.move(self.x() + delta.x(), self.y() + delta.y())
-    #     # self.oldPos = evt.globalPos()
-
+    
     def predict_keyvals_act(self):
         print('predictin fields')
 
@@ -1440,15 +1393,37 @@ class CanvasMainWindow(QWidget, WindowMixin):
             pixmap=QPixmap.fromImage(image )
             height = image.height()
             width=image.width()
-            print('image.height() width ',height,image.width())
-            if width>25000:
+            print('image.height() width ',height,width)
+
+            
+            if (width>height)& (width>25000):
                 fact=int(100*25000/width)/100
                 print('*************fact',fact)
                 prop_height=int(height*fact)
                 prop_width=int(width*fact)
                 # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
                 pixmap = pixmap.scaledToHeight(prop_height)
-                # pixmap = pixmap.scaledToWidth(prop_width)
+            if (height>width)& (height>25000):
+                print(' Height is higher')
+                fact=int(100*25000/height)/100
+                print('*************fact',fact)
+                prop_height=int(height*fact)
+                prop_width=int(width*fact)
+                # print('prop_height,height,fact, height/fact ',prop_height,height,fact, height/fact)
+                pixmap = pixmap.scaledToWidth(prop_width)
+
+
+            # # pixmap=QPixmap.fromImage(image )
+            # image = pixmap.toImage()
+            # height = image.height()
+            # width=image.width()
+            # print('image.height() width ',height,width)
+            # if height>width:
+            #     print('Image is vertical rotating it 90 degrees')
+            #     self.rotate(angle=90)
+            #     # pixmap=QPixmap.fromImage(image )
+            #     height = image.height()
+            #     width=image.width()
 
             self.canvas.load_pixmap(pixmap)
             self.image = self.canvas.pixmap.toImage()
@@ -1653,8 +1628,12 @@ class CanvasMainWindow(QWidget, WindowMixin):
 
     def rotate(self):
         print('In rotate')
+        
+        # print(shapes)
+
+        
+        # if angle==180.9:
         shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
-        print(shapes)
         self.save_labels( './boxes_mod.txt')
         try:
             angle=float(self.rotateEdit.text())
@@ -1776,47 +1755,51 @@ class CanvasMainWindow(QWidget, WindowMixin):
         self.canvas.verified = False
 
     def align_act(self,return_smooth):        
-        # yolo_boxes=np.array(self.getYoloBoxes())
-        # print('yolo_boxes ',yolo_boxes)
+        self.canvas.create_line(0,2000,2000,5000,fill='red')
+        # # yolo_boxes=np.array(self.getYoloBoxes())
+        # # print('yolo_boxes ',yolo_boxes)
 
-        # # npimage = qimage2ndarray.recarray_view(self.image)
-        # xyxys=self.xywh2xyxy(yolo_boxes,self.image_data)
-        # print('xyxy ',xyxys)
-        # rect = QRect(xyxys[0][0],xyxys[0][1] ,xyxys[0][2]-xyxys[0][0] ,xyxys[0][3]-xyxys[0][1]     )
-        # print('self.image.size',self.image.size())
-        shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
-        self.save_labels( './boxes_mod.txt')
+        # # # npimage = qimage2ndarray.recarray_view(self.image)
+        # # xyxys=self.xywh2xyxy(yolo_boxes,self.image_data)
+        # # print('xyxy ',xyxys)
+        # # rect = QRect(xyxys[0][0],xyxys[0][1] ,xyxys[0][2]-xyxys[0][0] ,xyxys[0][3]-xyxys[0][1]     )
+        # # print('self.image.size',self.image.size())
+        # shapes = [self.format_shape(shape) for shape in self.canvas.shapes]
+        # self.save_labels( './boxes_mod.txt')
 
-        points=shapes[0]['points']
+        # points=shapes[0]['points']
         
-        # print('points ',points)
-        idxes=[0,0]
-        idyes=[0,0]
-        idxes[0], idyes[0]=points[0]
-        idxes[1], idyes[1]=points[2]
-        idxes[0], idyes[0]=round(idxes[0]), round(idyes[0])
-        idxes[1], idyes[1]=round(idxes[1]), round(idyes[1])
+        # # print('points ',points)
+        # idxes=[0,0]
+        # idyes=[0,0]
+        # idxes[0], idyes[0]=points[0]
+        # idxes[1], idyes[1]=points[2]
+        # idxes[0], idyes[0]=round(idxes[0]), round(idyes[0])
+        # idxes[1], idyes[1]=round(idxes[1]), round(idyes[1])
 
-        cv2im=self.getCV2im()
-        clipped_im=cv2.cvtColor(cv2im, cv2.COLOR_BGR2GRAY)
+        # cv2im=self.getCV2im()
+        # clipped_im=cv2.cvtColor(cv2im, cv2.COLOR_BGR2GRAY)
         
-        clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
+        # clipped_im=clipped_im[idyes[0]:idyes[1],idxes[0]:idxes[1]] #ys=h, xs=w
 
-        zerotlineid=findHorlineIndex(clipped_im,horizontalsize=30)
-        if zerotlineid==0:
-            zerotlineid=findHorlineIndex(clipped_im,horizontalsize=10)
-            if zerotlineid==0:
-                zerotlineid=findHorlineIndex_alt(clipped_im,horizontalsize=10)
-        try:
-            self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
-            self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=return_smooth)    
-            straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
-            self.load_cv2im( straightImage,isgrey=False)
-            print('Done alignment....')
-        except:
-            msg=QMessageBox()
-            msg.setText('Error in alignement')
-            msg.exec_()
+        # zerotlineid=findHorlineIndex(clipped_im,horizontalsize=30)
+        # if zerotlineid==0:
+        #     zerotlineid=findHorlineIndex(clipped_im,horizontalsize=10)
+        #     if zerotlineid==0:
+        #         zerotlineid=findHorlineIndex_alt(clipped_im,horizontalsize=10)
+        # try:
+        #     self.colnumbers,shifts2bapplied=getColumnShifts(clipped_im,zerotlineid)
+        #     print(self.colnumbers,shifts2bapplied)
+        #     self.shifts2bapplied=getCleanedCurve(shifts2bapplied,returnsmooth=return_smooth)  
+        #     print('After cleaned*******************************************************')
+        #     print(self.colnumbers,self.shifts2bapplied)  
+        #     straightImage=getStraightenedImage(cv2im,self.colnumbers+idxes[0],self.shifts2bapplied)
+        #     self.load_cv2im( straightImage,isgrey=False)
+        #     print('Done alignment....')
+        # except:
+        #     msg=QMessageBox()
+        #     msg.setText('Error in alignement')
+        #     msg.exec_()
     def undo_align_act(self):
         pixmap = QPixmap.fromImage(self.image)
         # self.image=self.prev_image.copy()

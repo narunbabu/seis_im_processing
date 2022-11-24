@@ -165,14 +165,18 @@ def convert(image_filepath: Path, segy_filepath: Path=None, config_filepath: Pat
 #     fullfilter=np.array([*smallfilter]*(times+1))[:len(sgray)]
 #     return fullfilter
 def gethorizontalLineFilter(hf_data,sgray):
-    hf_data[hf_data>0]=0
-    hf_data[hf_data>-0.05]=0
-    hf_data[hf_data<=-0.05]=1
+    # hf_data[hf_data>0]=0
+    # hf_data[hf_data>-0.05]=0
+    # hf_data[hf_data<=-0.05]=1
+
+    nmin=np.mean(hf_data[hf_data<0])
+    hf_data[hf_data>nmin]=0
+    hf_data[hf_data<=nmin]=1
     
     ids=np.where(hf_data==1)
     difids=np.diff(ids)
     difids[difids>1]
-    spike_interval=int(np.median(difids[difids>1]))
+    spike_interval=int(np.nanmedian(difids[difids>1]))
     # ,np.mean(difids[difids>1])
     _,spikewidths=np.where(difids>1)
     spikewidth=int(np.median(np.diff(spikewidths)))
@@ -566,9 +570,10 @@ def img2rawtrace(mthresh,stime,etime,ntrc): #key function need filters before
 
     traces=[]
     for i in range(len(pixrange)-1):
-        trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc:pixrange[i+1]+halfpixper_trc].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc)
+        # trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc:pixrange[i+1]+halfpixper_trc].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc)
     #     print(pixrange[i],pixrange[i+1])
-        # trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc-3:pixrange[i+1]+halfpixper_trc+3].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc+6)
+        n=5
+        trc=pixper_trc*thresh[:,pixrange[i]-halfpixper_trc-n:pixrange[i+1]+halfpixper_trc+n].sum(axis=1)/(pixrange[i+1]-pixrange[i]+pixper_trc+2*n)
         nlesThalf=np.sum(trc<=pixper_trc/2)
         ngreThalf=np.sum(trc>pixper_trc/2)
         if ngreThalf/nlesThalf<0.01:

@@ -322,13 +322,16 @@ class MainWindow(QMainWindow):
             lf_data,wf_data,hf_data,xmaxnormmeans=windowFilt(twt,sgray,nclip=0,window=(1,10),order=4)
             useHorfilter=True
             crude_hor_filter=False
-            if useHorfilter:
-                if not crude_hor_filter:
-                    hlfilter=gethorizontalLineFilter(hf_data,gray) #median gap found and kept lo values to nullify horizontal line
-                    hlfilter[hlfilter<=0.5]=0.5
-                    print('hlfilter')
-                else:
-                    hlfilter=getHorizontalRawFilter(hf_data) #filter generate with crude way, line gaps are filled with 0.1 values
+            try:
+                if useHorfilter:
+                    if not crude_hor_filter:
+                        hlfilter=gethorizontalLineFilter(hf_data,gray) #median gap found and kept lo values to nullify horizontal line
+                        hlfilter[hlfilter<=0.5]=0.5
+                        print('hlfilter')
+                    else:
+                        hlfilter=getHorizontalRawFilter(hf_data) #filter generate with crude way, line gaps are filled with 0.1 values
+            except:
+                useHorfilter=False
 
             mthresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
             #     traces=img2rawtrace(clipped_im,stime,etime,ntrc)
